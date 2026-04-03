@@ -4,13 +4,11 @@
 
 **[Live Demo](https://rad-kleicha-98bb94.netlify.app)**
 
----
 
 ## Why I built this
 
 I kept losing track of where my money went every month. Bank statements are overwhelming, spreadsheets are boring, and most finance apps want access to your bank account. I wanted something fast, beautiful, and private — so I built it.
 
----
 
 ## Features
 
@@ -31,7 +29,6 @@ I kept losing track of where my money went every month. Bank statements are over
   - Daily Trend (Last 30 days) — line chart
   - Weekly Spending — week-by-week bar chart
 
----
 
 ## Tech Stack
 
@@ -46,13 +43,11 @@ I kept losing track of where my money went every month. Bank statements are over
 
 No frameworks. No backend. No database. Everything runs in the browser.
 
----
 
 ## Screenshots
 
 > PIN lock screen → Dashboard → Export
 
----
 
 ## Running locally
 
@@ -64,7 +59,6 @@ cd SpendMind
 open index.html
 ```
 
----
 
 ## What I learned
 
@@ -76,7 +70,6 @@ This was my first time building a complete product from scratch as an APM. Key t
 - The difference between frontend state and persistent storage
 - What a data model is and how changing it has downstream consequences
 
----
 
 ## What's next
 
@@ -86,6 +79,3 @@ This was my first time building a complete product from scratch as an APM. Key t
 - [ ] PWA support (installable on phone)
 - [ ] Recurring expense auto-logging
 
----
-
-*Built with [Claude Code](https://claude.ai/code)*
