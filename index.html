@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpendMind</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- PIN Lock Screen -->
+  <div id="pin-screen">
+    <div class="pin-box">
+      <div class="pin-brand"><span class="brand-main">Spend</span><span class="brand-nyx">Mind</span></div>
+      <p class="pin-label" id="pin-label">Enter your PIN</p>
+      <div class="pin-dots" id="pin-dots">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <div class="pin-error" id="pin-error"></div>
+      <div class="pin-grid">
+        <button class="pin-key" data-v="1">1</button>
+        <button class="pin-key" data-v="2">2</button>
+        <button class="pin-key" data-v="3">3</button>
+        <button class="pin-key" data-v="4">4</button>
+        <button class="pin-key" data-v="5">5</button>
+        <button class="pin-key" data-v="6">6</button>
+        <button class="pin-key" data-v="7">7</button>
+        <button class="pin-key" data-v="8">8</button>
+        <button class="pin-key" data-v="9">9</button>
+        <button class="pin-key pin-key--clear" id="pin-clear">⌫</button>
+        <button class="pin-key" data-v="0">0</button>
+        <button class="pin-key pin-key--empty" disabled></button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="topnav">
+    <div class="topnav-brand">
+      <span class="brand-main">Spend</span><span class="brand-nyx">Mind</span>
+    </div>
+    <div class="topnav-center">
+      <button id="prev-month" class="month-arrow">&#8249;</button>
+      <div class="month-display">
+        <span class="month-dot"></span>
+        <span id="month-label">March 2026</span>
+      </div>
+      <button id="next-month" class="month-arrow">&#8250;</button>
+    </div>
+    <div class="topnav-right">
+      <button class="btn-budget-open" id="open-budget">&#9680; Budgets</button>
+      <button type="button" id="open-import" class="btn-import-nav">&#8679; Import</button>
+      <button type="button" id="export-report" class="btn-export-nav">&#8681; Export</button>
+    </div>
+  </nav>
+
+  <!-- Animated background orbs -->
+  <div class="bg" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="orb orb-4"></div>
+    <div class="orb orb-5"></div>
+    <div class="orb-beam" id="orb-beam"></div>
+    <div class="orb-beam-spread" id="orb-beam-spread"></div>
+    <div class="cursor-glow" id="cursor-glow"></div>
+    <div class="grid-overlay"></div>
+  </div>
+
+  <div class="app">
+    <!-- Summary Cards -->
+    <section class="summary">
+      <div class="card card--total">
+        <p class="card-label">Total Spent</p>
+        <p class="card-amount" id="total-spent">₹0.00</p>
+      </div>
+      <div class="card card--credit">
+        <p class="card-label">Credit Card</p>
+        <p class="card-amount" id="total-credit">₹0.00</p>
+      </div>
+      <div class="card card--day">
+        <p class="card-label">Highest Day</p>
+        <p class="card-amount" id="highest-day-amt">₹0.00</p>
+        <p class="card-sub" id="highest-day-label">—</p>
+      </div>
+      <div class="card card--week">
+        <p class="card-label">Highest Week</p>
+        <p class="card-amount" id="highest-week-amt">₹0.00</p>
+        <p class="card-sub" id="highest-week-label">—</p>
+      </div>
+    </section>
+
+    <!-- Money Intelligence -->
+    <section class="insights-section" id="insights-section" style="display:none">
+      <div class="insights-header">
+        <span class="insights-icon">🧠</span>
+        <h2>Money Intelligence</h2>
+      </div>
+      <div class="insights-grid" id="insights-grid"></div>
+    </section>
+
+    <!-- Form + List -->
+    <div class="main-grid">
+      <section class="form-section">
+        <div class="form-section-header">
+          <h2>Log Expense</h2>
+        </div>
+        <form id="entry-form">
+
+          <div class="type-toggle">
+            <button type="button" class="type-btn active" data-type="expense">Expense</button>
+            <button type="button" class="type-btn" data-type="income">Income</button>
+          </div>
+          <input type="hidden" id="entry-type" value="expense" />
+
+          <div class="form-row">
+            <label for="entry-category">Category</label>
+            <select id="entry-category" required>
+              <option value="" disabled selected>Select category</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <label for="entry-description">Note</label>
+            <input
+              type="text"
+              id="entry-description"
+              placeholder="Optional note"
+              maxlength="60"
+            />
+          </div>
+
+          <div class="form-row two-col">
+            <div>
+              <label for="entry-amount">Amount (₹)</label>
+              <input
+                type="number"
+                id="entry-amount"
+                placeholder="0.00"
+                min="0.01"
+                step="0.01"
+                required
+              />
+            </div>
+            <div>
+              <label for="entry-date">Date</label>
+              <input type="date" id="entry-date" required />
+            </div>
+          </div>
+
+          <div class="form-row" id="pay-via-row">
+            <label>Paid via</label>
+            <div class="pay-toggle">
+              <button type="button" class="pay-btn active" data-pay="cash">Cash / UPI</button>
+              <button type="button" class="pay-btn" data-pay="credit">Credit Card</button>
+            </div>
+            <input type="hidden" id="entry-payment" value="cash" />
+          </div>
+
+          <button type="submit" class="btn-add" id="btn-add">Add Expense</button>
+        </form>
+      </section>
+
+      <section class="list-section">
+        <div class="list-header">
+          <h2>Transactions</h2>
+          <div class="list-controls">
+            <select id="filter-category">
+              <option value="all">All Categories</option>
+            </select>
+            <select id="filter-payment">
+              <option value="all">All Methods</option>
+              <option value="cash">Cash / UPI</option>
+              <option value="credit">Credit Card</option>
+            </select>
+            <button id="clear-all" class="btn-clear">Clear All</button>
+          </div>
+        </div>
+        <ul id="transaction-list" class="transaction-list">
+          <li class="empty-state" id="empty-state">No expenses yet. Add one!</li>
+        </ul>
+      </section>
+    </div>
+
+    <!-- Charts 2×2 grid -->
+    <div class="charts-grid">
+      <section class="chart-section chart-section--full">
+        <h2>This Month — Daily Timeline</h2>
+        <div class="chart-wrapper chart-wrapper--timeline">
+          <canvas id="timeline-chart"></canvas>
+        </div>
+        <p class="chart-empty" id="timeline-empty">Add entries to see your daily timeline.</p>
+      </section>
+
+      <section class="chart-section">
+        <h2>Spending by Category</h2>
+        <div class="chart-wrapper chart-wrapper--tall">
+          <canvas id="category-chart"></canvas>
+        </div>
+        <p class="chart-empty" id="cat-empty">Add entries to see breakdown.</p>
+      </section>
+
+      <section class="chart-section">
+        <h2>Cash vs Credit Card</h2>
+        <div class="chart-wrapper chart-wrapper--donut">
+          <canvas id="payment-chart"></canvas>
+        </div>
+        <p class="chart-empty" id="pay-empty">Add entries to see split.</p>
+      </section>
+
+      <section class="chart-section">
+        <h2>Daily Spending — Last 30 Days</h2>
+        <div class="chart-wrapper">
+          <canvas id="daily-chart"></canvas>
+        </div>
+        <p class="chart-empty" id="daily-empty">Add entries to see trend.</p>
+      </section>
+
+      <section class="chart-section">
+        <h2>Weekly Spending</h2>
+        <div class="chart-wrapper">
+          <canvas id="weekly-chart"></canvas>
+        </div>
+        <p class="chart-empty" id="weekly-empty">Add entries to see weeks.</p>
+      </section>
+    </div>
+
+  </div>
+
+  <!-- Budget Modal -->
+  <div class="modal-overlay" id="budget-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Monthly Budgets</h3>
+        <button class="modal-close" id="close-budget">✕</button>
+      </div>
+      <p class="modal-hint">Set a monthly spending limit per category. You'll see progress bars in your insights.</p>
+      <div class="budget-list" id="budget-list"></div>
+      <div class="modal-footer">
+        <button class="btn-cancel" id="cancel-budget">Close</button>
+        <button class="btn-confirm" id="save-budgets">Save Budgets</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Modal -->
+  <div class="modal-overlay" id="import-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Bulk Import</h3>
+        <button class="modal-close" id="close-import">✕</button>
+      </div>
+
+      <p class="modal-hint">
+        Upload a <strong>.xlsx</strong> or <strong>.csv</strong> file with columns:<br/>
+        <code>Date · Category · Note · Amount · Paid Via</code>
+      </p>
+
+      <button class="btn-template" id="download-template">⬇ Download Template</button>
+
+      <div class="drop-zone" id="drop-zone">
+        <div class="drop-zone-icon">📂</div>
+        <p class="drop-zone-text">Drag &amp; drop your file here<br/><span>or click to browse</span></p>
+        <input type="file" id="file-input" accept=".xlsx,.xls,.csv" hidden />
+      </div>
+
+      <div class="import-preview" id="import-preview" style="display:none">
+        <p class="preview-meta" id="preview-meta"></p>
+        <div class="preview-table-wrap">
+          <table class="preview-table" id="preview-table">
+            <thead>
+              <tr><th>Date</th><th>Category</th><th>Note</th><th>Amount</th><th>Paid Via</th><th></th></tr>
+            </thead>
+            <tbody id="preview-body"></tbody>
+          </table>
+        </div>
+        <p class="import-errors" id="import-errors"></p>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancel" id="cancel-import">Cancel</button>
+        <button class="btn-confirm" id="confirm-import" disabled>Import</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2/dist/chartjs-plugin-datalabels.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
