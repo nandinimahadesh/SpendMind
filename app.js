@@ -1,9 +1,10 @@
 'use strict';
 
 // ── Storage ──────────────────────────────────────────────────────────────────
-let STORAGE_KEY = 'broketracker_entries';
-let BUDGET_KEY  = 'spendmind_budgets';
-const PINS_KEY  = 'spendmind_registered_pins';
+let STORAGE_KEY    = 'broketracker_entries';
+let BUDGET_KEY     = 'spendmind_budgets';
+let CATEGORIES_KEY = 'spendmind_categories';
+const PINS_KEY     = 'spendmind_registered_pins';
 
 function loadEntries() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
@@ -17,6 +18,12 @@ function loadBudgets() {
 }
 function saveBudgets(b) { localStorage.setItem(BUDGET_KEY, JSON.stringify(b)); }
 
+function loadCategories() {
+  try { return JSON.parse(localStorage.getItem(CATEGORIES_KEY)) || null; }
+  catch { return null; }
+}
+function saveCategories(c) { localStorage.setItem(CATEGORIES_KEY, JSON.stringify(c)); }
+
 function getRegisteredPins() {
   try { return JSON.parse(localStorage.getItem(PINS_KEY)) || []; }
   catch { return []; }
@@ -27,37 +34,36 @@ function registerPin(pin) {
 }
 
 function activatePin(pin) {
-  STORAGE_KEY = `broketracker_entries_${pin}`;
-  BUDGET_KEY  = `spendmind_budgets_${pin}`;
-  entries = loadEntries();
-  budgets = loadBudgets();
+  STORAGE_KEY    = `broketracker_entries_${pin}`;
+  BUDGET_KEY     = `spendmind_budgets_${pin}`;
+  CATEGORIES_KEY = `spendmind_categories_${pin}`;
+  entries    = loadEntries();
+  budgets    = loadBudgets();
+  const saved = loadCategories();
+  categories = saved || { expense: DEFAULT_EXPENSE_CATS.map(c=>({...c})), income: DEFAULT_INCOME_CATS.map(c=>({...c})) };
 }
 
-let budgets = {};
+let budgets    = {};
+let categories = { expense: [], income: [] };
 
-// ── Categories ────────────────────────────────────────────────────────────────
-const EXPENSE_CATS = [
-  { value: 'Food - Office',       label: '🍱 Food - Office' },
-  { value: 'Food - Me',           label: '🍜 Food - Me' },
-  { value: 'Food - PG',           label: '🍽️ Food - PG' },
-  { value: 'Food - Friends',      label: '🫂 Food - Friends' },
-  { value: 'Groceries',           label: '🛒 Groceries' },
-  { value: 'Coffee',              label: '☕ Coffee' },
-  { value: 'Drinks / Bars',       label: '🍻 Drinks / Bars' },
-  { value: 'Metro',               label: '🚇 Metro' },
-  { value: 'Auto',                label: '🚗 Auto' },
-  { value: 'Online Shopping',     label: '📦 Online Shopping' },
-  { value: 'Subscriptions',       label: '📱 Subscriptions' },
-  { value: 'Entertainment',       label: '🎬 Entertainment' },
-  { value: 'Travel',              label: '✈️ Travel' },
-  { value: 'Gifts',               label: '🎁 Gifts' },
-  { value: 'Skincare / Medicals', label: '💊 Skincare / Medicals' },
-  { value: 'Investments',         label: '📈 Investments' },
-  { value: 'Mom',                 label: '🫶 Mom' },
-  { value: 'Misc',                label: '💸 Misc' },
+// ── Default categories (seeds for new accounts only) ─────────────────────────
+const DEFAULT_EXPENSE_CATS = [
+  { value: 'Food',             label: '🍜 Food' },
+  { value: 'Groceries',        label: '🛒 Groceries' },
+  { value: 'Coffee',           label: '☕ Coffee' },
+  { value: 'Drinks / Bars',    label: '🍻 Drinks / Bars' },
+  { value: 'Transport',        label: '🚇 Transport' },
+  { value: 'Online Shopping',  label: '📦 Online Shopping' },
+  { value: 'Subscriptions',    label: '📱 Subscriptions' },
+  { value: 'Entertainment',    label: '🎬 Entertainment' },
+  { value: 'Travel',           label: '✈️ Travel' },
+  { value: 'Gifts',            label: '🎁 Gifts' },
+  { value: 'Health',           label: '💊 Health' },
+  { value: 'Investments',      label: '📈 Investments' },
+  { value: 'Misc',             label: '💸 Misc' },
 ];
 
-const INCOME_CATS = [
+const DEFAULT_INCOME_CATS = [
   { value: 'Salary',        label: '💼 Salary' },
   { value: 'Freelance',     label: '🖥️ Freelance' },
   { value: 'Gift Received', label: '🎀 Gift Received' },
@@ -65,32 +71,17 @@ const INCOME_CATS = [
   { value: 'Other Income',  label: '💰 Other Income' },
 ];
 
-// ── Category icons ────────────────────────────────────────────────────────────
-const ICONS = {
-  'Food - Office':       '🍱',
-  'Food - Me':           '🍜',
-  'Food - PG':           '🍽️',
-  'Food - Friends':      '🫂',
-  'Groceries':           '🛒',
-  'Coffee':              '☕',
-  'Drinks / Bars':       '🍻',
-  'Metro':               '🚇',
-  'Auto':                '🚗',
-  'Online Shopping':     '📦',
-  'Subscriptions':       '📱',
-  'Entertainment':       '🎬',
-  'Travel':              '✈️',
-  'Gifts':               '🎁',
-  'Skincare / Medicals': '💊',
-  'Investments':         '📈',
-  'Mom':                 '🫶',
-  'Misc':                '💸',
-  'Salary':              '💼',
-  'Freelance':           '🖥️',
-  'Gift Received':       '🎀',
-  'Reimbursement':       '🔄',
-  'Other Income':        '💰',
-};
+// ── Category icon lookup (works for built-in + custom categories) ─────────────
+function getIcon(categoryValue) {
+  const all = [...(categories.expense || []), ...(categories.income || [])];
+  const match = all.find(c => c.value === categoryValue);
+  if (match) {
+    // Extract first emoji/character from label (e.g. "🍜 Food" → "🍜")
+    const parts = match.label.split(' ');
+    if (parts.length > 1) return parts[0];
+  }
+  return '💸';
+}
 
 // ── Chart palette ─────────────────────────────────────────────────────────────
 const PALETTE = [
@@ -157,7 +148,7 @@ function fmtShort(n) {
 
 // ── Populate category dropdown ────────────────────────────────────────────────
 function populateCategorySelect(type) {
-  const cats = type === 'income' ? INCOME_CATS : EXPENSE_CATS;
+  const cats = type === 'income' ? categories.income : categories.expense;
   categorySelect.innerHTML = '<option value="" disabled selected>Select category</option>';
   cats.forEach(c => {
     const opt = document.createElement('option');
@@ -278,7 +269,7 @@ function buildItem(e) {
   li.className = 'transaction-item' + (isIncome ? ' income-item' : '');
   li.dataset.id = e.id;
 
-  const icon = ICONS[e.category] || (isIncome ? '💰' : '💸');
+  const icon = getIcon(e.category);
   const payTag = isIncome ? '' : (e.payment === 'credit'
     ? '<span class="tx-pay credit">CC</span>'
     : '<span class="tx-pay cash">UPI</span>');
@@ -347,7 +338,7 @@ function updateInsights() {
   const sorted = Object.entries(catTotals).sort((a, b) => b[1] - a[1]);
   if (sorted.length) {
     const [topCat, topAmt] = sorted[0];
-    const icon = ICONS[topCat] || '💸';
+    const icon = getIcon(topCat);
     insights.push({
       emoji: icon,
       type:  'info',
@@ -879,11 +870,9 @@ clearAllBtn.addEventListener('click', () => {
 });
 
 // ── Bulk Import ───────────────────────────────────────────────────────────────
-const KNOWN_CATEGORIES = [
-  'Food - Office','Food - Me','Food - PG','Food - Friends','Groceries','Coffee',
-  'Drinks / Bars','Metro','Auto','Online Shopping','Subscriptions',
-  'Entertainment','Travel','Gifts','Skincare / Medicals','Investments','Mom','Misc',
-];
+function getKnownCategories() {
+  return [...categories.expense, ...categories.income].map(c => c.value);
+}
 
 const importOverlay  = document.getElementById('import-overlay');
 const dropZone       = document.getElementById('drop-zone');
@@ -1052,7 +1041,7 @@ function parseDate(raw) {
 function matchCategory(raw) {
   if (!raw) return 'Misc';
   const lower = raw.toLowerCase();
-  return KNOWN_CATEGORIES.find(c => c.toLowerCase() === lower) || raw || 'Misc';
+  return getKnownCategories().find(c => c.toLowerCase() === lower) || raw || 'Misc';
 }
 
 function matchPayment(raw) {
@@ -1148,8 +1137,8 @@ const budgetList    = document.getElementById('budget-list');
 function openBudgetModal() {
   budgetOverlay.classList.add('active');
   budgetList.innerHTML = '';
-  EXPENSE_CATS.forEach(cat => {
-    const icon = ICONS[cat.value] || '💸';
+  categories.expense.forEach(cat => {
+    const icon = getIcon(cat.value);
     const current = budgets[cat.value] || '';
     const item = document.createElement('div');
     item.className = 'budget-item';
@@ -1204,21 +1193,53 @@ document.getElementById('save-budgets').addEventListener('click', () => {
   pinLabel.textContent = 'Enter your PIN';
 
   function migrateOldData(pin) {
-    // One-time migration: copy pre-PIN data into this account's namespace
     const oldEntries = localStorage.getItem('broketracker_entries');
     const oldBudgets = localStorage.getItem('spendmind_budgets');
     const newEKey    = `broketracker_entries_${pin}`;
     const newBKey    = `spendmind_budgets_${pin}`;
-    if (oldEntries && !localStorage.getItem(newEKey)) {
-      localStorage.setItem(newEKey, oldEntries);
-    }
-    if (oldBudgets && !localStorage.getItem(newBKey)) {
-      localStorage.setItem(newBKey, oldBudgets);
+    if (oldEntries && !localStorage.getItem(newEKey)) localStorage.setItem(newEKey, oldEntries);
+    if (oldBudgets && !localStorage.getItem(newBKey)) localStorage.setItem(newBKey, oldBudgets);
+  }
+
+  function migrateCategories(pin) {
+    const catKey = `spendmind_categories_${pin}`;
+    if (localStorage.getItem(catKey)) return; // already set, don't overwrite
+
+    // Check if this account has existing entries — if so, build category list from them
+    const entriesKey = `broketracker_entries_${pin}`;
+    const existingEntries = JSON.parse(localStorage.getItem(entriesKey) || '[]');
+    if (existingEntries.length > 0) {
+      // Build category list from actual entry data so nothing is lost
+      const expenseCatValues = [...new Set(
+        existingEntries.filter(e => e.type !== 'income').map(e => e.category).filter(Boolean)
+      )];
+      const incomeCatValues = [...new Set(
+        existingEntries.filter(e => e.type === 'income').map(e => e.category).filter(Boolean)
+      )];
+      const knownIcons = {
+        'Food - Office':'🍱','Food - Me':'🍜','Food - PG':'🍽️','Food - Friends':'🫂',
+        'Groceries':'🛒','Coffee':'☕','Drinks / Bars':'🍻','Metro':'🚇','Auto':'🚗',
+        'Online Shopping':'📦','Subscriptions':'📱','Entertainment':'🎬','Travel':'✈️',
+        'Gifts':'🎁','Skincare / Medicals':'💊','Investments':'📈','Mom':'🫶','Misc':'💸',
+        'Salary':'💼','Freelance':'🖥️','Gift Received':'🎀','Reimbursement':'🔄','Other Income':'💰',
+      };
+      const tocat = (v, fallback) => ({ value: v, label: `${knownIcons[v] || fallback} ${v}` });
+      localStorage.setItem(catKey, JSON.stringify({
+        expense: expenseCatValues.map(v => tocat(v, '💸')),
+        income:  incomeCatValues.map(v => tocat(v, '💰')),
+      }));
+    } else {
+      // Brand new account — use generic defaults
+      localStorage.setItem(catKey, JSON.stringify({
+        expense: DEFAULT_EXPENSE_CATS.map(c => ({...c})),
+        income:  DEFAULT_INCOME_CATS.map(c => ({...c})),
+      }));
     }
   }
 
   function unlock(pin) {
     migrateOldData(pin);
+    migrateCategories(pin);
     sessionStorage.setItem(SESSION_KEY, pin);
     activatePin(pin);
     pinScreen.classList.add('hidden');
@@ -1356,6 +1377,176 @@ document.getElementById('save-budgets').addEventListener('click', () => {
   }
 
   tick();
+})();
+
+// ── Categories Modal ──────────────────────────────────────────────────────────
+(function () {
+  const overlay   = document.getElementById('categories-overlay');
+  const catList   = document.getElementById('cat-list');
+  const nameInput = document.getElementById('cat-name-input');
+  const emojiInput= document.getElementById('cat-emoji-input');
+  const addBtn    = document.getElementById('cat-add-btn');
+  const tabs      = document.querySelectorAll('.cat-tab');
+
+  let activeType = 'expense';
+
+  function renderCatList() {
+    catList.innerHTML = '';
+    const list = categories[activeType] || [];
+    if (list.length === 0) {
+      catList.innerHTML = '<p style="color:var(--muted);font-size:.82rem;text-align:center;padding:12px;">No categories yet. Add one below!</p>';
+      return;
+    }
+    list.forEach((cat, idx) => {
+      const emoji = cat.label.split(' ')[0];
+      const item  = document.createElement('div');
+      item.className = 'cat-item';
+      item.innerHTML = `
+        <span class="cat-item-emoji">${emoji}</span>
+        <span class="cat-item-name">${cat.value}</span>
+        <button class="cat-delete" data-idx="${idx}" title="Delete">✕</button>`;
+      catList.appendChild(item);
+    });
+
+    catList.querySelectorAll('.cat-delete').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const idx = parseInt(btn.dataset.idx);
+        const cat = categories[activeType][idx];
+        const inUse = entries.some(e => e.category === cat.value);
+        if (inUse && !confirm(`"${cat.value}" is used in existing entries. Delete anyway?`)) return;
+        // Clean up any budget set for this category
+        delete budgets[cat.value];
+        saveBudgets(budgets);
+        categories[activeType].splice(idx, 1);
+        saveCategories(categories);
+        renderCatList();
+        populateCategorySelect(document.querySelector('.type-btn.active')?.dataset.type || 'expense');
+      });
+    });
+
+    catList.querySelectorAll('.cat-item').forEach((item, idx) => {
+      item.addEventListener('click', e => {
+        if (e.target.closest('.cat-delete')) return;
+        const cat = categories[activeType][idx];
+        nameInput.value = cat.value;
+        emojiCycleIndex = 0;
+        const suggestions = getAllSuggestions(cat.value);
+        emojiInput.value = cat.label.split(' ')[0] || suggestions[0] || '😀';
+        nameInput.focus();
+        // Highlight the selected pill
+        catList.querySelectorAll('.cat-item').forEach(i => i.classList.remove('cat-item--selected'));
+        item.classList.add('cat-item--selected');
+      });
+    });
+  }
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      activeType = tab.dataset.type;
+      renderCatList();
+    });
+  });
+
+  addBtn.addEventListener('click', () => {
+    const name  = nameInput.value.trim();
+    const emoji = emojiInput.value.trim() || '💸';
+    emojiCycleIndex = 0;
+    if (!name) { nameInput.focus(); return; }
+    const duplicate = categories[activeType].some(c => c.value.toLowerCase() === name.toLowerCase());
+    if (duplicate) { nameInput.style.borderColor = 'var(--rose)'; setTimeout(() => nameInput.style.borderColor = '', 1500); return; }
+    categories[activeType].push({ value: name, label: `${emoji} ${name}` });
+    saveCategories(categories);
+    nameInput.value  = '';
+    emojiInput.value = '';
+    renderCatList();
+    populateCategorySelect(document.querySelector('.type-btn.active')?.dataset.type || 'expense');
+  });
+
+  // Emoji auto-suggest as user types
+  let emojiCycleIndex = 0;
+
+  const EMOJI_MAP = [
+    // Specific food variants first — order matters!
+    { keys: ['food - pg','food pg'], emoji: '🍽️' },
+    { keys: ['food - me','food me'], emoji: '🍜' },
+    { keys: ['food - office','food office','office food','office lunch'], emoji: '🍱' },
+    { keys: ['food - friends','food friends','friends food'], emoji: '🫂' },
+    { keys: ['food'], emoji: '🥘' },  // generic food fallback
+    { keys: ['eat','meal','lunch','dinner','breakfast','snack','restaurant'], emoji: '🍴' },
+    { keys: ['mom','mum','mother'], emoji: '🫶' },
+    { keys: ['family','parents','dad','papa'], emoji: '👨‍👩‍👧' },
+    { keys: ['grocery','groceries','supermarket','vegetables','fruits'], emoji: '🛒' },
+    { keys: ['coffee','cafe','starbucks','tea'], emoji: '☕' },
+    { keys: ['drink','bar','alcohol','beer','wine','pub','nightout','night out'], emoji: '🍻' },
+    { keys: ['metro','subway','train','transit','public transport'], emoji: '🚇' },
+    { keys: ['auto','cab','taxi','uber','ola','rickshaw'], emoji: '🚗' },
+    { keys: ['transport','commute','travel local','bus'], emoji: '🚌' },
+    { keys: ['shopping','online','amazon','flipkart','myntra','order'], emoji: '📦' },
+    { keys: ['subscription','netflix','spotify','prime','streaming','app'], emoji: '📱' },
+    { keys: ['entertainment','movie','film','concert','event','outing'], emoji: '🎬' },
+    { keys: ['travel','trip','flight','hotel','vacation','holiday'], emoji: '✈️' },
+    { keys: ['gift','present','birthday'], emoji: '🎁' },
+    { keys: ['skincare','medical','medicine','doctor','pharmacy','health','gym','fitness','wellness'], emoji: '💊' },
+    { keys: ['investment','mutual fund','stocks','sip','trading','saving'], emoji: '📈' },
+    { keys: ['rent','housing','house','home','pg rent','accommodation'], emoji: '🏠' },
+    { keys: ['electricity','water','gas','utility','bill','internet','wifi'], emoji: '💡' },
+    { keys: ['salary','income','pay','wage'], emoji: '💼' },
+    { keys: ['freelance','consulting','project'], emoji: '🖥️' },
+    { keys: ['reimbursement','refund','claim'], emoji: '🔄' },
+    { keys: ['misc','other','miscellaneous','general'], emoji: '💸' },
+    { keys: ['petrol','fuel','parking'], emoji: '⛽' },
+    { keys: ['books','course','education','learning','school','college'], emoji: '📚' },
+    { keys: ['phone','mobile','recharge'], emoji: '📞' },
+    { keys: ['clothes','clothing','fashion','shoes','accessories'], emoji: '👗' },
+    { keys: ['haircut','salon','spa','grooming'], emoji: '💇' },
+    { keys: ['dog','pet','vet'], emoji: '🐾' },
+    { keys: ['charity','donation'], emoji: '🤝' },
+  ];
+
+  function getAllSuggestions(name) {
+    const lower = name.toLowerCase().trim();
+    if (!lower) return [];
+    const results = [];
+    for (const { keys, emoji } of EMOJI_MAP) {
+      if (keys.some(k => lower.includes(k) || k.includes(lower))) {
+        if (!results.includes(emoji)) results.push(emoji);
+      }
+    }
+    // Always have a few fallbacks
+    ['✨','🔖','📌','💡','🎯'].forEach(e => { if (!results.includes(e)) results.push(e); });
+    return results;
+  }
+
+  nameInput.addEventListener('input', () => {
+    emojiCycleIndex = 0;
+    const suggestions = getAllSuggestions(nameInput.value);
+    emojiInput.value = suggestions[0] || '😀';
+  });
+
+  document.getElementById('cat-emoji-refresh').addEventListener('click', () => {
+    const suggestions = getAllSuggestions(nameInput.value);
+    emojiCycleIndex = (emojiCycleIndex + 1) % suggestions.length;
+    emojiInput.value = suggestions[emojiCycleIndex];
+  });
+
+  nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') addBtn.click(); });
+
+  document.getElementById('open-categories').addEventListener('click', () => {
+    activeType = 'expense';
+    tabs.forEach(t => t.classList.toggle('active', t.dataset.type === 'expense'));
+    nameInput.value  = '';
+    emojiInput.value = '';
+    emojiCycleIndex  = 0;
+    renderCatList();
+    overlay.classList.add('active');
+  });
+
+  document.getElementById('close-categories').addEventListener('click',  () => overlay.classList.remove('active'));
+  document.getElementById('cancel-categories').addEventListener('click', () => overlay.classList.remove('active'));
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('active'); });
 })();
 
 // ── Export Report ─────────────────────────────────────────────────────────────
