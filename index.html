@@ -51,6 +51,7 @@
     </div>
     <div class="topnav-right">
       <button class="btn-budget-open" id="open-budget">&#9680; Budgets</button>
+      <button type="button" id="open-categories" class="btn-categories-nav">&#9776; Categories</button>
       <button type="button" id="open-import" class="btn-import-nav">&#8679; Import</button>
       <button type="button" id="export-report" class="btn-export-nav">&#8681; Export</button>
     </div>
@@ -227,6 +228,30 @@
       </section>
     </div>
 
+  </div>
+
+  <!-- Categories Modal -->
+  <div class="modal-overlay" id="categories-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>⊞ Manage Categories</h3>
+        <button class="modal-close" id="close-categories">✕</button>
+      </div>
+      <div class="cat-type-tabs">
+        <button class="cat-tab active" data-type="expense">Expense</button>
+        <button class="cat-tab" data-type="income">Income</button>
+      </div>
+      <div class="cat-list" id="cat-list"></div>
+      <div class="cat-add-form">
+        <input type="text" id="cat-name-input" placeholder="e.g. Food - Me, Rent, Gym…" class="cat-name-field" />
+        <input type="text" id="cat-emoji-input" placeholder="😀" maxlength="8" class="cat-emoji-field" title="Emoji (auto-suggested)" readonly />
+        <button class="cat-refresh-btn" id="cat-emoji-refresh" title="Try another emoji">↻</button>
+        <button class="btn-confirm" id="cat-add-btn">Add</button>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" id="cancel-categories">Done</button>
+      </div>
+    </div>
   </div>
 
   <!-- Budget Modal -->
