@@ -2005,9 +2005,9 @@ function startPinFlow() {
 
   // Update button label based on capability
   if (!hasSpeech) {
-    btn.textContent = '✍️ Quick Log';
+    btn.textContent = '🎤 Log by Voice';
     btn.title = isSafari
-      ? 'Type your expense — Safari mic is unreliable. Use iPhone keyboard mic 🎤 inside the box.'
+      ? 'Tap 🎤 on your iPhone keyboard to dictate inside the box.'
       : 'Type a quick description — e.g. "Coffee 250 today"';
   }
 
