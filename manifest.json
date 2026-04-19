@@ -1,0 +1,14 @@
+{
+  "name": "SpendMind",
+  "short_name": "SpendMind",
+  "description": "Personal expense tracker — fast, private, beautiful",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0b0f1e",
+  "theme_color": "#a78bfa",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

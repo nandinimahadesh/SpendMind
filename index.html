@@ -4,6 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SpendMind</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#a78bfa" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="icon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -107,6 +112,7 @@
       <section class="form-section">
         <div class="form-section-header">
           <h2>Log Expense</h2>
+          <button type="button" class="btn-recurring-open" id="open-recurring">↻ Recurring</button>
         </div>
         <form id="entry-form">
 
@@ -160,7 +166,34 @@
             <input type="hidden" id="entry-payment" value="cash" />
           </div>
 
+          <button type="button" class="btn-voice" id="btn-voice">🎤 Log by Voice</button>
+          <div class="voice-type-wrap" id="voice-type-wrap" style="display:none">
+            <input type="text" id="voice-text-input" class="voice-text-input"
+              placeholder='e.g. "Coffee 250 today" or "Rent 12k on the 1st credit card"'
+              autocomplete="off" />
+            <button type="button" class="voice-text-parse" id="voice-text-parse">Parse →</button>
+          </div>
+          <div class="voice-result" id="voice-result" style="display:none">
+            <div class="voice-heard" id="voice-heard"></div>
+            <div class="voice-parsed" id="voice-parsed"></div>
+            <div class="voice-actions">
+              <button type="button" class="voice-confirm" id="voice-confirm">Use this</button>
+              <button type="button" class="voice-retry"   id="voice-retry">Try again</button>
+              <button type="button" class="voice-dismiss" id="voice-dismiss">✕</button>
+            </div>
+          </div>
+
           <button type="submit" class="btn-add" id="btn-add">Add Expense</button>
+          <button type="button" class="btn-cancel-edit" id="cancel-edit" style="display:none">✕ Cancel edit</button>
+          <div class="recurring-row" id="recurring-toggle-row">
+            <label class="recurring-check-label">
+              <input type="checkbox" id="recurring-check" />
+              <span>↻ Repeat every month</span>
+            </label>
+            <div class="recurring-day-wrap" id="recurring-day-wrap" style="display:none">
+              on day <input type="number" id="recurring-day" min="1" max="28" value="1" class="recurring-day-input" />
+            </div>
+          </div>
         </form>
       </section>
 
@@ -168,6 +201,7 @@
         <div class="list-header">
           <h2>Transactions</h2>
           <div class="list-controls">
+            <input type="text" id="search-transactions" class="search-input" placeholder="🔍 Search…" />
             <select id="filter-category">
               <option value="all">All Categories</option>
             </select>
@@ -230,6 +264,21 @@
 
   </div>
 
+  <!-- Recurring Modal -->
+  <div class="modal-overlay" id="recurring-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>↻ Recurring Expenses</h3>
+        <button class="modal-close" id="close-recurring">✕</button>
+      </div>
+      <p class="modal-hint">These are auto-logged on the 1st of each month when you open the app.</p>
+      <div class="recurring-list" id="recurring-list"></div>
+      <div class="modal-footer">
+        <button class="btn-cancel" id="cancel-recurring">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Categories Modal -->
   <div class="modal-overlay" id="categories-overlay">
     <div class="modal">
@@ -243,9 +292,11 @@
       </div>
       <div class="cat-list" id="cat-list"></div>
       <div class="cat-add-form">
-        <input type="text" id="cat-name-input" placeholder="e.g. Food - Me, Rent, Gym…" class="cat-name-field" />
-        <input type="text" id="cat-emoji-input" placeholder="😀" maxlength="8" class="cat-emoji-field" title="Emoji (auto-suggested)" readonly />
-        <button class="cat-refresh-btn" id="cat-emoji-refresh" title="Try another emoji">↻</button>
+        <div class="cat-emoji-wrap">
+          <input type="text" id="cat-emoji-input" class="cat-emoji-field" readonly />
+          <button class="cat-refresh-btn" id="cat-emoji-refresh" title="Try another emoji">↻</button>
+        </div>
+        <input type="text" id="cat-name-input" placeholder="New category…" class="cat-name-field" />
         <button class="btn-confirm" id="cat-add-btn">Add</button>
       </div>
       <div class="modal-footer">

@@ -4,6 +4,8 @@
 let STORAGE_KEY    = 'broketracker_entries';
 let BUDGET_KEY     = 'spendmind_budgets';
 let CATEGORIES_KEY = 'spendmind_categories';
+let RECURRING_KEY  = 'spendmind_recurring';
+let AUTOLOG_KEY    = 'spendmind_autolog';
 const PINS_KEY     = 'spendmind_registered_pins';
 
 function loadEntries() {
@@ -24,6 +26,12 @@ function loadCategories() {
 }
 function saveCategories(c) { localStorage.setItem(CATEGORIES_KEY, JSON.stringify(c)); }
 
+function loadRecurrings() {
+  try { return JSON.parse(localStorage.getItem(RECURRING_KEY)) || []; }
+  catch { return []; }
+}
+function saveRecurrings(r) { localStorage.setItem(RECURRING_KEY, JSON.stringify(r)); }
+
 function getRegisteredPins() {
   try { return JSON.parse(localStorage.getItem(PINS_KEY)) || []; }
   catch { return []; }
@@ -37,14 +45,18 @@ function activatePin(pin) {
   STORAGE_KEY    = `broketracker_entries_${pin}`;
   BUDGET_KEY     = `spendmind_budgets_${pin}`;
   CATEGORIES_KEY = `spendmind_categories_${pin}`;
+  RECURRING_KEY  = `spendmind_recurring_${pin}`;
+  AUTOLOG_KEY    = `spendmind_autolog_${pin}`;
   entries    = loadEntries();
   budgets    = loadBudgets();
+  recurrings = loadRecurrings();
   const saved = loadCategories();
   categories = saved || { expense: DEFAULT_EXPENSE_CATS.map(c=>({...c})), income: DEFAULT_INCOME_CATS.map(c=>({...c})) };
 }
 
 let budgets    = {};
 let categories = { expense: [], income: [] };
+let recurrings = [];
 
 // ── Default categories (seeds for new accounts only) ─────────────────────────
 const DEFAULT_EXPENSE_CATS = [
@@ -135,6 +147,112 @@ const highestDayLblEl   = document.getElementById('highest-day-label');
 const highestWeekAmtEl  = document.getElementById('highest-week-amt');
 const highestWeekLblEl  = document.getElementById('highest-week-label');
 
+// ── Edit mode ────────────────────────────────────────────────────────────────
+let editingId = null;
+
+function enterEditMode(id) {
+  const entry = entries.find(e => e.id === id);
+  if (!entry) return;
+  editingId = id;
+
+  // Fill type
+  const isIncome = entry.type === 'income';
+  typeInput.value = entry.type;
+  typeBtns.forEach(b => b.classList.toggle('active', b.dataset.type === entry.type));
+  populateCategorySelect(entry.type);
+
+  // Fill fields
+  categorySelect.value = entry.category;
+  descInput.value      = (entry.description !== entry.category) ? entry.description : '';
+  amountInput.value    = entry.amount;
+  dateInput.value      = entry.date;
+  paymentInput.value   = entry.payment;
+  payBtns.forEach(b => b.classList.toggle('active', b.dataset.pay === entry.payment));
+  payViaRow.style.display = isIncome ? 'none' : '';
+
+  // Update UI
+  btnAdd.textContent = isIncome ? 'Update Income' : 'Update Expense';
+  document.getElementById('cancel-edit').style.display = 'block';
+  document.getElementById('recurring-toggle-row').style.display = 'none';
+  form.classList.add('form--editing');
+  form.closest('.form-section').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function cancelEditMode() {
+  editingId = null;
+  form.reset();
+  dateInput.value = new Date().toISOString().split('T')[0];
+  typeInput.value = 'expense';
+  typeBtns.forEach(b => b.classList.toggle('active', b.dataset.type === 'expense'));
+  paymentInput.value = 'cash';
+  payBtns.forEach(b => b.classList.toggle('active', b.dataset.pay === 'cash'));
+  payViaRow.style.display = '';
+  populateCategorySelect('expense');
+  btnAdd.textContent = 'Add Expense';
+  document.getElementById('cancel-edit').style.display = 'none';
+  document.getElementById('recurring-toggle-row').style.display = '';
+  form.classList.remove('form--editing');
+}
+
+// ── Toast notification ────────────────────────────────────────────────────────
+function showToast(msg) {
+  let t = document.getElementById('sm-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'sm-toast';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.classList.add('toast--show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('toast--show'), 3500);
+}
+
+// ── Auto-log recurring expenses ───────────────────────────────────────────────
+function daysInMonth(year, month) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function autoLogRecurrings() {
+  if (!recurrings.length) return;
+  const now      = new Date();
+  const monthKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
+  if (localStorage.getItem(AUTOLOG_KEY) === monthKey) return;
+
+  const todayNum = now.getDate();
+  let logged = 0;
+
+  recurrings.forEach(r => {
+    const maxDay = daysInMonth(now.getFullYear(), now.getMonth());
+    const day    = Math.min(r.dayOfMonth, maxDay);
+    if (day > todayNum) return; // not yet due this month
+
+    // Skip if already logged for this month
+    const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const alreadyLogged = entries.some(e => e.recurringId === r.id && e.date.startsWith(monthPrefix));
+    if (alreadyLogged) return;
+
+    const dateStr = `${monthPrefix}-${String(day).padStart(2, '0')}`;
+    entries.push({
+      id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2),
+      type:        r.type,
+      description: r.description,
+      category:    r.category,
+      amount:      r.amount,
+      date:        dateStr,
+      payment:     r.payment,
+      recurringId: r.id,
+    });
+    logged++;
+  });
+
+  if (logged > 0) {
+    saveEntries(entries);
+    showToast(`${logged} recurring expense${logged > 1 ? 's' : ''} auto-logged for ${now.toLocaleString('en-IN', { month: 'long', year: 'numeric' })}`);
+  }
+  localStorage.setItem(AUTOLOG_KEY, monthKey);
+}
+
 // ── Format ────────────────────────────────────────────────────────────────────
 function fmt(n) {
   const abs = Math.abs(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -178,7 +296,15 @@ function init() {
   syncMonthLabel();
   dateInput.value = new Date().toISOString().split('T')[0];
   populateCategorySelect('expense');
+  autoLogRecurrings();
   render();
+
+  // Recurring checkbox show/hide day picker
+  const recurCheck = document.getElementById('recurring-check');
+  const recurDayWrap = document.getElementById('recurring-day-wrap');
+  recurCheck.addEventListener('change', () => {
+    recurDayWrap.style.display = recurCheck.checked ? 'flex' : 'none';
+  });
 }
 
 // ── Summary ───────────────────────────────────────────────────────────────────
@@ -243,12 +369,18 @@ function updateCategoryFilter() {
 
 // ── Transaction list ──────────────────────────────────────────────────────────
 function renderList() {
-  const catFilter = filterCategory.value;
-  const payFilter = filterPayment.value;
+  const catFilter    = filterCategory.value;
+  const payFilter    = filterPayment.value;
+  const searchEl     = document.getElementById('search-transactions');
+  const searchQuery  = (searchEl ? searchEl.value : '').toLowerCase().trim();
 
   const filtered = getViewEntries().filter(e => {
     if (catFilter !== 'all' && e.category !== catFilter) return false;
     if (payFilter !== 'all' && e.payment   !== payFilter) return false;
+    if (searchQuery) {
+      const haystack = `${e.category} ${e.description}`.toLowerCase();
+      if (!haystack.includes(searchQuery)) return false;
+    }
     return true;
   }).slice().reverse();
 
@@ -287,7 +419,7 @@ function buildItem(e) {
     </div>
     <div class="tx-right">
       <span class="${amtClass}">${amtPrefix}${fmt(e.amount)}</span>
-      <div class="tx-row">${payTag}<button class="tx-delete" data-id="${e.id}">✕</button></div>
+      <div class="tx-row">${payTag}${e.recurringId ? '<span class="tx-recurring" title="Recurring">↻</span>' : ''}<button class="tx-edit" data-id="${e.id}" title="Edit">✎</button><button class="tx-delete" data-id="${e.id}" title="Delete">✕</button></div>
     </div>
   `;
   return li;
@@ -307,89 +439,133 @@ function updateInsights() {
   insightsSection.style.display = 'block';
 
   const insights = [];
+  const todayD   = new Date(); todayD.setHours(0,0,0,0);
+  const totalSpent = expenses.reduce((s, e) => s + e.amount, 0);
+  const r = n => n.toLocaleString('en-IN', { maximumFractionDigits: 0 });
 
-  // 1. Week-over-week comparison
-  const getWeekTotal = (weeksAgo) => {
-    const today = new Date(); today.setHours(0,0,0,0);
-    const dow = today.getDay() === 0 ? 6 : today.getDay() - 1;
-    const thisMonday = new Date(today); thisMonday.setDate(today.getDate() - dow - weeksAgo * 7);
-    const thisSunday = new Date(thisMonday); thisSunday.setDate(thisMonday.getDate() + 6);
-    return expenses.filter(e => {
-      const d = new Date(e.date + 'T00:00:00');
-      return d >= thisMonday && d <= thisSunday;
-    }).reduce((s, e) => s + e.amount, 0);
-  };
-  const thisWeek = getWeekTotal(0);
-  const lastWeek = getWeekTotal(1);
-  if (lastWeek > 0 && thisWeek > 0) {
-    const pct = Math.round(((thisWeek - lastWeek) / lastWeek) * 100);
+  // ── Last month comparison ──────────────────────────────────────────────────
+  const prevMonthDate = new Date(activeYear, activeMonth - 1, 1);
+  const lastMonthExp  = entries.filter(e => {
+    const d = new Date(e.date + 'T00:00:00');
+    return d.getFullYear() === prevMonthDate.getFullYear() &&
+           d.getMonth()    === prevMonthDate.getMonth()    &&
+           e.type !== 'income';
+  });
+  const lastMonthTotal = lastMonthExp.reduce((s, e) => s + e.amount, 0);
+  if (lastMonthTotal > 0 && totalSpent > 0) {
+    const pct  = Math.round(((totalSpent - lastMonthTotal) / lastMonthTotal) * 100);
     const more = pct > 0;
+    const prevLabel = prevMonthDate.toLocaleString('en-IN', { month: 'short' });
     insights.push({
       emoji: more ? '📈' : '📉',
       type:  more ? 'bad' : 'good',
-      title: `You spent ${Math.abs(pct)}% ${more ? 'more' : 'less'} than last week`,
-      sub:   `This week ₹${thisWeek.toLocaleString('en-IN', {maximumFractionDigits:0})} vs ₹${lastWeek.toLocaleString('en-IN', {maximumFractionDigits:0})} last week`,
+      title: `${Math.abs(pct)}% ${more ? 'more' : 'less'} than ${prevLabel}`,
+      sub:   `This month ₹${r(totalSpent)} vs ₹${r(lastMonthTotal)} last month`,
     });
   }
 
-  // 2. Top category
+  // ── Daily pace + projection ────────────────────────────────────────────────
+  const isCurrentMonth = todayD.getFullYear() === activeYear && todayD.getMonth() === activeMonth;
+  if (isCurrentMonth && expenses.length >= 3) {
+    const dayOfMonth  = todayD.getDate();
+    const daysInMo    = new Date(activeYear, activeMonth + 1, 0).getDate();
+    const daysLeft    = daysInMo - dayOfMonth;
+    const dailyAvg    = totalSpent / dayOfMonth;
+    const projected   = Math.round(dailyAvg * daysInMo);
+    insights.push({
+      emoji: '🎯',
+      type:  'info',
+      title: `Spending ₹${r(Math.round(dailyAvg))}/day on average`,
+      sub:   `${daysLeft} days left — projected month total: ₹${r(projected)}`,
+    });
+  }
+
+  // ── Top 3 categories breakdown ────────────────────────────────────────────
   const catTotals = {};
   expenses.forEach(e => { catTotals[e.category] = (catTotals[e.category] || 0) + e.amount; });
   const sorted = Object.entries(catTotals).sort((a, b) => b[1] - a[1]);
-  if (sorted.length) {
-    const [topCat, topAmt] = sorted[0];
-    const icon = getIcon(topCat);
+  if (sorted.length >= 1) {
+    const top3    = sorted.slice(0, 3);
+    const top3Sum = top3.reduce((s, [, v]) => s + v, 0);
+    const pct     = Math.round(top3Sum / totalSpent * 100);
+    const names   = top3.map(([c, v]) => `${c} ₹${r(v)}`).join(' · ');
     insights.push({
-      emoji: icon,
+      emoji: getIcon(top3[0][0]),
       type:  'info',
-      title: `Top category: ${topCat}`,
-      sub:   `₹${topAmt.toLocaleString('en-IN', {maximumFractionDigits:0})} total — ${Math.round(topAmt / expenses.reduce((s,e)=>s+e.amount,0)*100)}% of all spending`,
+      title: `Top ${top3.length} categories = ${pct}% of spend`,
+      sub:   names,
     });
   }
 
-  // 3. Unusual spike day
-  const dayTotals = {};
-  expenses.forEach(e => { dayTotals[e.date] = (dayTotals[e.date] || 0) + e.amount; });
-  const dayVals = Object.values(dayTotals);
-  if (dayVals.length >= 3) {
-    const avg = dayVals.reduce((s,v) => s+v, 0) / dayVals.length;
-    const spikes = Object.entries(dayTotals).filter(([,v]) => v > avg * 1.8).sort((a,b) => b[1]-a[1]);
-    if (spikes.length) {
-      const [spikeDate, spikeAmt] = spikes[0];
-      const label = new Date(spikeDate + 'T00:00:00').toLocaleDateString('en-IN', {day:'numeric', month:'short'});
+  // ── Biggest single transaction ────────────────────────────────────────────
+  if (expenses.length >= 2) {
+    const biggest = expenses.reduce((a, b) => a.amount > b.amount ? a : b);
+    const bigDate = new Date(biggest.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    insights.push({
+      emoji: '💸',
+      type:  'warn',
+      title: `Biggest purchase: ₹${r(biggest.amount)}`,
+      sub:   `${biggest.description || biggest.category} on ${bigDate}`,
+    });
+  }
+
+  // ── No-spend days ─────────────────────────────────────────────────────────
+  if (isCurrentMonth && todayD.getDate() >= 5) {
+    const spendDays = new Set(expenses.map(e => e.date)).size;
+    const noSpend   = todayD.getDate() - spendDays;
+    if (noSpend > 0) {
       insights.push({
-        emoji: '⚡',
-        type:  'warn',
-        title: `Unusual spike on ${label}`,
-        sub:   `₹${spikeAmt.toLocaleString('en-IN', {maximumFractionDigits:0})} — ${Math.round(spikeAmt/avg)}× your daily average`,
+        emoji: '🧘',
+        type:  'good',
+        title: `${noSpend} no-spend day${noSpend > 1 ? 's' : ''} this month`,
+        sub:   `You spent on ${spendDays} out of ${todayD.getDate()} days`,
       });
     }
   }
 
-  // 4. Credit card ratio warning
-  const ccTotal = expenses.filter(e => e.payment === 'credit').reduce((s,e) => s+e.amount, 0);
-  const total   = expenses.reduce((s,e) => s+e.amount, 0);
-  if (total > 0 && ccTotal / total > 0.6) {
+  // ── Unusual spike day ─────────────────────────────────────────────────────
+  const dayTotals = {};
+  expenses.forEach(e => { dayTotals[e.date] = (dayTotals[e.date] || 0) + e.amount; });
+  const dayVals = Object.values(dayTotals);
+  if (dayVals.length >= 3) {
+    const avg    = dayVals.reduce((s, v) => s + v, 0) / dayVals.length;
+    const spikes = Object.entries(dayTotals).filter(([, v]) => v > avg * 2).sort((a, b) => b[1] - a[1]);
+    if (spikes.length) {
+      const [spikeDate, spikeAmt] = spikes[0];
+      const label = new Date(spikeDate + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+      insights.push({
+        emoji: '⚡',
+        type:  'warn',
+        title: `Big spike on ${label} — ₹${r(spikeAmt)}`,
+        sub:   `${Math.round(spikeAmt / avg)}× your daily average of ₹${r(Math.round(avg))}`,
+      });
+    }
+  }
+
+  // ── Credit card ratio ─────────────────────────────────────────────────────
+  const ccTotal = expenses.filter(e => e.payment === 'credit').reduce((s, e) => s + e.amount, 0);
+  if (totalSpent > 0 && ccTotal / totalSpent > 0.55) {
     insights.push({
       emoji: '💳',
       type:  'bad',
-      title: `${Math.round(ccTotal/total*100)}% on credit card`,
-      sub:   `₹${ccTotal.toLocaleString('en-IN',{maximumFractionDigits:0})} charged — watch your CC bill`,
+      title: `${Math.round(ccTotal / totalSpent * 100)}% on credit card this month`,
+      sub:   `₹${r(ccTotal)} charged — watch your CC bill at month end`,
     });
   }
 
-  // 5. Budget progress (if any budgets set)
+  // ── Budget overruns ───────────────────────────────────────────────────────
   const budgetCats = Object.keys(budgets);
   if (budgetCats.length > 0) {
-    const catTotalsForBudget = {};
-    expenses.forEach(e => { catTotalsForBudget[e.category] = (catTotalsForBudget[e.category] || 0) + e.amount; });
-    const overBudget = budgetCats.filter(c => catTotalsForBudget[c] > budgets[c]);
+    const catSpendBudget = {};
+    expenses.forEach(e => { catSpendBudget[e.category] = (catSpendBudget[e.category] || 0) + e.amount; });
+    const overBudget = budgetCats.filter(c => catSpendBudget[c] > budgets[c]);
     if (overBudget.length > 0) {
+      const details = overBudget.slice(0, 2).map(c => `${c} ₹${r(catSpendBudget[c])} / ₹${r(budgets[c])}`).join(' · ');
       insights.unshift({
         emoji: '🚨',
-        type: 'bad',
+        type:  'bad',
         title: `Over budget in ${overBudget.length} categor${overBudget.length > 1 ? 'ies' : 'y'}`,
-        sub: overBudget.slice(0,3).join(', ') + (overBudget.length > 3 ? '...' : ''),
+        sub:   details + (overBudget.length > 2 ? ` +${overBudget.length - 2} more` : ''),
       });
     }
   }
@@ -832,36 +1008,72 @@ form.addEventListener('submit', e => {
   const amount = parseFloat(amountInput.value);
   if (!amount || amount <= 0) { amountInput.focus(); return; }
 
-  entries.push({
-    id:          crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2),
+  const entryData = {
     type:        typeInput.value,
     description: descInput.value.trim() || categorySelect.value,
     category:    categorySelect.value,
     amount:      Math.round(amount * 100) / 100,
     date:        dateInput.value,
     payment:     paymentInput.value,
-  });
+  };
+
+  if (editingId) {
+    const idx = entries.findIndex(en => en.id === editingId);
+    if (idx !== -1) entries[idx] = { ...entries[idx], ...entryData };
+    cancelEditMode();
+  } else {
+    const newEntry = {
+      id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2),
+      ...entryData,
+    };
+    entries.push(newEntry);
+
+    // Save as recurring if toggled
+    const recurCheck = document.getElementById('recurring-check');
+    if (recurCheck && recurCheck.checked) {
+      const dayInput = document.getElementById('recurring-day');
+      const day = parseInt(dayInput ? dayInput.value : 1) || 1;
+      recurrings.push({
+        id:          newEntry.id + '_r',
+        type:        entryData.type,
+        description: entryData.description,
+        category:    entryData.category,
+        amount:      entryData.amount,
+        payment:     entryData.payment,
+        dayOfMonth:  Math.min(Math.max(day, 1), 28),
+      });
+      saveRecurrings(recurrings);
+      recurCheck.checked = false;
+      document.getElementById('recurring-day-wrap').style.display = 'none';
+      showToast('Saved as recurring — will auto-log every month.');
+    }
+
+    descInput.value      = '';
+    categorySelect.value = '';
+    amountInput.value    = '';
+    descInput.focus();
+  }
   saveEntries(entries);
   render();
-
-  descInput.value = '';
-  categorySelect.value = '';
-  amountInput.value = '';
-  descInput.focus();
 });
 
-// ── Delete (event delegation) ─────────────────────────────────────────────────
+// ── Edit / Delete (event delegation) ─────────────────────────────────────────
 transactionList.addEventListener('click', e => {
-  const btn = e.target.closest('.tx-delete');
-  if (!btn) return;
-  entries = entries.filter(en => en.id !== btn.dataset.id);
+  const editBtn = e.target.closest('.tx-edit');
+  if (editBtn) { enterEditMode(editBtn.dataset.id); return; }
+  const delBtn = e.target.closest('.tx-delete');
+  if (!delBtn) return;
+  entries = entries.filter(en => en.id !== delBtn.dataset.id);
   saveEntries(entries);
   render();
 });
 
-// ── Filters ───────────────────────────────────────────────────────────────────
+document.getElementById('cancel-edit').addEventListener('click', cancelEditMode);
+
+// ── Filters + Search ──────────────────────────────────────────────────────────
 filterCategory.addEventListener('change', renderList);
 filterPayment.addEventListener('change', renderList);
+document.getElementById('search-transactions').addEventListener('input', renderList);
 
 // ── Clear all ─────────────────────────────────────────────────────────────────
 clearAllBtn.addEventListener('click', () => {
@@ -1403,9 +1615,49 @@ document.getElementById('save-budgets').addEventListener('click', () => {
       item.className = 'cat-item';
       item.innerHTML = `
         <span class="cat-item-emoji">${emoji}</span>
-        <span class="cat-item-name">${cat.value}</span>
+        <span class="cat-item-name" data-idx="${idx}">${cat.value}</span>
+        <button class="cat-rename" data-idx="${idx}" title="Rename">✎</button>
         <button class="cat-delete" data-idx="${idx}" title="Delete">✕</button>`;
       catList.appendChild(item);
+    });
+
+    catList.querySelectorAll('.cat-rename').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const idx  = parseInt(btn.dataset.idx);
+        const cat  = categories[activeType][idx];
+        const nameEl = btn.closest('.cat-item').querySelector('.cat-item-name');
+        const oldName = cat.value;
+        const emoji   = cat.label.split(' ')[0];
+
+        // Replace name span with input
+        const input = document.createElement('input');
+        input.type  = 'text';
+        input.value = oldName;
+        input.className = 'cat-rename-input';
+        nameEl.replaceWith(input);
+        btn.style.display = 'none';
+        input.focus();
+        input.select();
+
+        function commitRename() {
+          const newName = input.value.trim();
+          if (newName && newName !== oldName) {
+            // Update category
+            categories[activeType][idx] = { value: newName, label: `${emoji} ${newName}` };
+            // Update any entries using old name
+            entries.forEach(entry => { if (entry.category === oldName) entry.category = newName; });
+            // Update budgets
+            if (budgets[oldName] !== undefined) { budgets[newName] = budgets[oldName]; delete budgets[oldName]; saveBudgets(budgets); }
+            saveCategories(categories);
+            saveEntries(entries);
+            populateCategorySelect(document.querySelector('.type-btn.active')?.dataset.type || 'expense');
+          }
+          renderCatList();
+        }
+        input.addEventListener('blur',    commitRename);
+        input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') { input.value = oldName; input.blur(); } });
+      });
     });
 
     catList.querySelectorAll('.cat-delete').forEach(btn => {
@@ -1548,6 +1800,372 @@ document.getElementById('save-budgets').addEventListener('click', () => {
   document.getElementById('cancel-categories').addEventListener('click', () => overlay.classList.remove('active'));
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('active'); });
 })();
+
+// ── Recurring modal ───────────────────────────────────────────────────────────
+(function () {
+  const overlay = document.getElementById('recurring-overlay');
+  const list    = document.getElementById('recurring-list');
+
+  function renderRecurringList() {
+    list.innerHTML = '';
+    if (!recurrings.length) {
+      list.innerHTML = '<p style="color:var(--muted);font-size:.85rem;text-align:center;padding:16px 0;">No recurring expenses yet.<br/>Add one from the form — tick "Repeat every month".</p>';
+      return;
+    }
+    recurrings.forEach((r, idx) => {
+      const icon = getIcon(r.category);
+      const row  = document.createElement('div');
+      row.className = 'recurring-item';
+      row.innerHTML = `
+        <div class="recurring-icon">${icon}</div>
+        <div class="recurring-info">
+          <div class="recurring-name">${escHtml(r.description)}</div>
+          <div class="recurring-meta">${escHtml(r.category)} · Day ${r.dayOfMonth} each month · ${fmt(r.amount)}</div>
+        </div>
+        <button class="recurring-delete" data-idx="${idx}" title="Remove">✕</button>`;
+      list.appendChild(row);
+    });
+
+    list.querySelectorAll('.recurring-delete').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.idx);
+        recurrings.splice(idx, 1);
+        saveRecurrings(recurrings);
+        renderRecurringList();
+      });
+    });
+  }
+
+  document.getElementById('open-recurring').addEventListener('click', () => {
+    renderRecurringList();
+    overlay.classList.add('active');
+  });
+
+  document.getElementById('close-recurring').addEventListener('click',  () => overlay.classList.remove('active'));
+  document.getElementById('cancel-recurring').addEventListener('click', () => overlay.classList.remove('active'));
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('active'); });
+})();
+
+// ── Voice Log ─────────────────────────────────────────────────────────────────
+(function () {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const btn          = document.getElementById('btn-voice');
+  const typeWrap     = document.getElementById('voice-type-wrap');
+  const textInput    = document.getElementById('voice-text-input');
+  const textParseBtn = document.getElementById('voice-text-parse');
+  const resultBox    = document.getElementById('voice-result');
+  const heardEl      = document.getElementById('voice-heard');
+  const parsedEl     = document.getElementById('voice-parsed');
+  const confirmBtn   = document.getElementById('voice-confirm');
+  const retryBtn     = document.getElementById('voice-retry');
+  const dismissBtn   = document.getElementById('voice-dismiss');
+
+  const hasSpeech = !!SpeechRecognition;
+  let lastParsed  = null;
+  let listening   = false;
+
+  // Update button label based on capability
+  if (!hasSpeech) {
+    btn.textContent = '✍️ Quick Log';
+    btn.title = 'Type a quick description — e.g. "Coffee 250 today"';
+  }
+
+  // ── Number-word → digit converter ───────────────────────────────────────────
+  const _N = {
+    zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,
+    ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,
+    sixteen:16,seventeen:17,eighteen:18,nineteen:19,
+    twenty:20,thirty:30,forty:40,fifty:50,sixty:60,seventy:70,eighty:80,ninety:90,
+  };
+  const _NWORDS = Object.keys(_N).join('|');
+
+  function wordsToDigits(text) {
+    // Pass 1: "X thousand/lakh/hundred [Y]"  →  number
+    // e.g. "five thousand" → 5000, "twelve hundred fifty" → 1250, "two lakh" → 200000
+    text = text.replace(
+      new RegExp(`\\b(${_NWORDS})(?:\\s+(${_NWORDS}))?\\s+(thousand|lakh|hundred)(?:\\s+(${_NWORDS})(?:\\s+(${_NWORDS}))?)?\\b`, 'gi'),
+      (_, a, b, mult, c, d) => {
+        let base = (_N[a.toLowerCase()]||0) + (_N[(b||'').toLowerCase()]||0);
+        const m  = mult.toLowerCase();
+        let val  = base * (m==='thousand'?1000 : m==='lakh'?100000 : 100);
+        val += (_N[(c||'').toLowerCase()]||0) + (_N[(d||'').toLowerCase()]||0);
+        return String(val);
+      }
+    );
+    // Pass 2: standalone "tens [ones]"  →  number  ("fifty three" → 53, "twenty" → 20)
+    text = text.replace(
+      new RegExp(`\\b(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:\\s+(one|two|three|four|five|six|seven|eight|nine))?\\b`, 'gi'),
+      (_, tens, ones) => String((_N[tens.toLowerCase()]||0) + (_N[(ones||'').toLowerCase()]||0))
+    );
+    // Pass 3: remaining single words ("five" → 5, "fifteen" → 15)
+    text = text.replace(new RegExp(`\\b(${_NWORDS})\\b`, 'gi'), w => String(_N[w.toLowerCase()]||w));
+    return text;
+  }
+
+  // ── Parser ──────────────────────────────────────────────────────────────────
+  const MONTHS = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+  const DAYS   = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+
+  function localDateStr(d) {
+    // Use local time components — avoids UTC offset shifting the date (e.g. IST = UTC+5:30)
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  function resolveDate(day, monIdx, todayD) {
+    const candidate = new Date(todayD.getFullYear(), monIdx, day);
+    if (candidate > todayD) candidate.setFullYear(todayD.getFullYear() - 1);
+    return localDateStr(candidate);
+  }
+
+  function parseTranscript(raw) {
+    // Convert spoken numbers to digits first ("five thousand" → "5000")
+    let text = wordsToDigits(raw.toLowerCase().trim());
+    const todayD = new Date(); todayD.setHours(0,0,0,0);
+    const result = {
+      raw,
+      amount:      null,
+      category:    '',
+      description: '',
+      date:        localDateStr(todayD),
+      payment:     'cash',
+      type:        'expense',
+    };
+
+    // ── 1. DATES FIRST (before amount, so "20" in "20th march" isn't eaten as ₹20) ──
+    const monPat = MONTHS.join('|');
+
+    if (/\byesterday\b/.test(text)) {
+      const d = new Date(todayD); d.setDate(d.getDate() - 1);
+      result.date = localDateStr(d);
+      text = text.replace(/\byesterday\b/, ' ');
+
+    } else if (/\btoday\b/.test(text)) {
+      text = text.replace(/\btoday\b/, ' ');
+
+    } else if (/(\d+)\s*days?\s*ago/.test(text)) {
+      const m = text.match(/(\d+)\s*days?\s*ago/);
+      const d = new Date(todayD); d.setDate(d.getDate() - parseInt(m[1]));
+      result.date = localDateStr(d);
+      text = text.replace(m[0], ' ');
+
+    } else if (/\blast\s*week\b/.test(text)) {
+      const d = new Date(todayD); d.setDate(d.getDate() - 7);
+      result.date = localDateStr(d);
+      text = text.replace(/\blast\s*week\b/, ' ');
+
+    } else {
+      // Pattern A: "april 18th" / "april 18" / "on april 18th"
+      const mA = text.match(new RegExp(`(?:on\\s+)?(?:the\\s+)?(${monPat})\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b`));
+      // Pattern B: "18th april" / "20th march" / "18th of april"
+      const mB = text.match(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)\\s*(?:of\\s+)?(${monPat})\\b`));
+      // Pattern C: "on the 15th" / "15th" — ordinal suffix required to avoid eating bare amounts
+      const mC = text.match(/(?:on\s+(?:the\s+)?)?(\d{1,2})(?:st|nd|rd|th)\b/);
+      // Pattern D: day names "friday", "last tuesday"
+      const mD = text.match(new RegExp(`\\b(${DAYS.join('|')})\\b`));
+
+      if (mA) {
+        const monIdx = MONTHS.indexOf(mA[1]), day = parseInt(mA[2]);
+        if (day >= 1 && day <= 31) { result.date = resolveDate(day, monIdx, todayD); text = text.replace(mA[0], ' '); }
+      } else if (mB) {
+        const day = parseInt(mB[1]), monIdx = MONTHS.indexOf(mB[2]);
+        if (day >= 1 && day <= 31) { result.date = resolveDate(day, monIdx, todayD); text = text.replace(mB[0], ' '); }
+      } else if (mC) {
+        const day = parseInt(mC[1]);
+        if (day >= 1 && day <= 31) {
+          result.date = localDateStr(new Date(todayD.getFullYear(), todayD.getMonth(), day));
+          text = text.replace(mC[0], ' ');
+        }
+      } else if (mD) {
+        const target = DAYS.indexOf(mD[1]);
+        const d = new Date(todayD);
+        const diff = (d.getDay() - target + 7) % 7 || 7;
+        d.setDate(d.getDate() - diff);
+        result.date = localDateStr(d);
+        text = text.replace(mD[0], ' ');
+      }
+    }
+
+    // ── 2. Amount (now safe — date numbers already removed) ──
+    const amtM = text.match(/(\d+(?:\.\d{1,2})?)\s*(k\b|thousand\b|lakh\b|l\b)?(?:\s*(?:rupees?|rs\.?|₹))?/);
+    if (amtM) {
+      let amt = parseFloat(amtM[1]);
+      const mul = (amtM[2] || '').replace(/\b/g, '');
+      if (mul === 'k' || mul === 'thousand') amt *= 1000;
+      else if (mul === 'lakh' || mul === 'l') amt *= 100000;
+      result.amount = Math.round(amt * 100) / 100;
+      text = text.replace(amtM[0], ' ');
+    }
+
+    // ── 3. Payment ──
+    if (/credit\s*card|\bcc\b/.test(text)) {
+      result.payment = 'credit';
+      text = text.replace(/credit\s*card|\bcc\b/g, ' ');
+    } else if (/\b(cash|upi|gpay|google\s*pay|phonepe|paytm|neft|imps|bhim)\b/.test(text)) {
+      result.payment = 'cash';
+      text = text.replace(/\b(cash|upi|gpay|google\s*pay|phonepe|paytm|neft|imps|bhim)\b/g, ' ');
+    }
+
+    // ── 4. Type ──
+    if (/\b(salary|income|received|got paid|freelance|reimbursement|refund|stipend)\b/.test(text)) {
+      result.type = 'income';
+    }
+
+    // ── 5. Strip filler ──
+    text = text
+      .replace(/\b(paid|spent|bought|ordered|had|got|for|on|at|the|a|an|of|and|with|by|from|to|is|was|just|rupees?|rs\.?|₹|expense|expenses|purchase)\b/g, ' ')
+      .replace(/\s{2,}/g, ' ').trim();
+
+    // ── Category: match user's own categories first (longest wins) ──
+    const allCats = [...(categories.expense || []), ...(categories.income || [])];
+    let bestCat = null, bestLen = 0;
+    allCats.forEach(cat => {
+      const key = cat.value.toLowerCase();
+      if (text.includes(key) && key.length > bestLen) { bestCat = cat.value; bestLen = key.length; return; }
+      key.split(/[\s\-\/]+/).forEach(word => {
+        if (word.length >= 3 && text.includes(word) && word.length > bestLen) {
+          bestCat = cat.value; bestLen = word.length;
+        }
+      });
+    });
+
+    // ── Fallback hints for popular apps / keywords ──
+    if (!bestCat) {
+      const HINTS = [
+        { keys: ['zomato','swiggy','dunzo','blinkit','food delivery','restaurant','lunch','dinner','breakfast','snack','chai','chai latte'], cat: 'Food' },
+        { keys: ['coffee','starbucks','cafe','cafe coffee day','ccd'], cat: 'Coffee' },
+        { keys: ['uber','ola','rapido','auto','cab','taxi','metro','bus','local','train','commute'], cat: 'Transport' },
+        { keys: ['amazon','flipkart','myntra','meesho','nykaa','ajio','shopping'], cat: 'Online Shopping' },
+        { keys: ['netflix','prime','hotstar','spotify','youtube','zee5','jiocinema'], cat: 'Subscriptions' },
+        { keys: ['gym','doctor','pharmacy','medicine','chemist','hospital','clinic','health'], cat: 'Health' },
+        { keys: ['petrol','fuel','parking'], cat: 'Transport' },
+        { keys: ['grocery','vegetables','fruits','bigbasket','zepto','instamart'], cat: 'Groceries' },
+        { keys: ['rent','pg','room'], cat: 'Rent' },
+        { keys: ['electricity','wifi','internet','gas','water','bill','utility'], cat: 'Utilities' },
+      ];
+      for (const h of HINTS) {
+        if (h.keys.some(k => text.includes(k) || raw.toLowerCase().includes(k))) {
+          const match = allCats.find(c => c.value.toLowerCase().includes(h.cat.toLowerCase()));
+          if (match) { bestCat = match.value; break; }
+        }
+      }
+    }
+
+    result.category    = bestCat || '';
+    result.description = text.replace(/\s+/g, ' ').trim();
+    return result;
+  }
+
+  // ── Show parsed result card ──────────────────────────────────────────────────
+  function showResult(parsed) {
+    lastParsed = parsed;
+    heardEl.textContent = `"${parsed.raw}"`;
+    const dateLabel = new Date(parsed.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    parsedEl.innerHTML = [
+      parsed.category ? `<span class="vp-chip cat">${escHtml(parsed.category)}</span>` : `<span class="vp-chip miss">Category?</span>`,
+      parsed.amount   ? `<span class="vp-chip amt">₹${parsed.amount.toLocaleString('en-IN')}</span>` : `<span class="vp-chip miss">Amount?</span>`,
+      `<span class="vp-chip date">${dateLabel}</span>`,
+      `<span class="vp-chip pay">${parsed.payment === 'credit' ? '💳 Credit' : '💵 Cash/UPI'}</span>`,
+    ].join('');
+    typeWrap.style.display  = 'none';
+    resultBox.style.display = 'block';
+  }
+
+  // ── Apply parsed to form ─────────────────────────────────────────────────────
+  function applyParsed(parsed) {
+    if (!parsed) return;
+    typeInput.value = parsed.type;
+    typeBtns.forEach(b => b.classList.toggle('active', b.dataset.type === parsed.type));
+    populateCategorySelect(parsed.type);
+    payViaRow.style.display = parsed.type === 'income' ? 'none' : '';
+    if (parsed.category) categorySelect.value = parsed.category;
+    descInput.value    = parsed.description || parsed.category || '';
+    if (parsed.amount)  amountInput.value = parsed.amount;
+    dateInput.value    = parsed.date;
+    paymentInput.value = parsed.payment;
+    payBtns.forEach(b => b.classList.toggle('active', b.dataset.pay === parsed.payment));
+    resultBox.style.display = 'none';
+    if (!parsed.amount) amountInput.focus();
+    else if (!parsed.category) categorySelect.focus();
+    else amountInput.focus();
+  }
+
+  // ── Text fallback (Safari / all browsers) ───────────────────────────────────
+  function showTextInput() {
+    typeWrap.style.display  = 'flex';
+    resultBox.style.display = 'none';
+    textInput.value = '';
+    textInput.focus();
+  }
+
+  function parseFromText() {
+    const val = textInput.value.trim();
+    if (!val) return;
+    showResult(parseTranscript(val));
+  }
+
+  textParseBtn.addEventListener('click', parseFromText);
+  textInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); parseFromText(); } });
+
+  // ── Chrome/Edge: real mic ────────────────────────────────────────────────────
+  if (hasSpeech) {
+    const rec = new SpeechRecognition();
+    rec.lang = 'en-IN';
+    rec.continuous = false;
+    rec.interimResults = false;
+
+    rec.onstart = () => {
+      listening = true;
+      btn.classList.add('btn-voice--listening');
+      btn.textContent = '🎙 Listening…';
+      typeWrap.style.display  = 'none';
+      resultBox.style.display = 'none';
+    };
+    rec.onend = () => {
+      listening = false;
+      btn.classList.remove('btn-voice--listening');
+      btn.textContent = '🎤 Log by Voice';
+    };
+    rec.onerror = e => {
+      listening = false;
+      btn.classList.remove('btn-voice--listening');
+      btn.textContent = '🎤 Log by Voice';
+      if (e.error === 'not-allowed') showToast('Mic blocked — allow in browser settings.');
+      else if (e.error !== 'aborted') { showToast('Couldn\'t hear clearly — type it instead.'); showTextInput(); }
+    };
+    rec.onresult = e => showResult(parseTranscript(e.results[0][0].transcript));
+
+    btn.addEventListener('click', () => {
+      if (listening) { rec.stop(); return; }
+      typeWrap.style.display  = 'none';
+      resultBox.style.display = 'none';
+      rec.start();
+    });
+
+    // retry = listen again on Chrome, show text on Safari
+    retryBtn.addEventListener('click', () => { resultBox.style.display = 'none'; rec.start(); });
+  } else {
+    // Safari / Firefox — text fallback
+    btn.addEventListener('click', () => {
+      if (typeWrap.style.display === 'flex') { typeWrap.style.display = 'none'; return; }
+      showTextInput();
+    });
+    retryBtn.addEventListener('click', () => { resultBox.style.display = 'none'; showTextInput(); });
+  }
+
+  confirmBtn.addEventListener('click', () => applyParsed(lastParsed));
+  dismissBtn.addEventListener('click', () => {
+    resultBox.style.display = 'none';
+    typeWrap.style.display  = 'none';
+    lastParsed = null;
+  });
+})();
+
+// ── Service Worker (PWA) ──────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
 
 // ── Export Report ─────────────────────────────────────────────────────────────
 document.getElementById('export-report').addEventListener('click', async () => {
