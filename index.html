@@ -16,6 +16,22 @@
 </head>
 <body>
 
+  <!-- Login / Email Auth Screen (Supabase magic link) -->
+  <div id="login-screen" style="display:none">
+    <div class="pin-box">
+      <div class="pin-brand"><span class="brand-main">Spend</span><span class="brand-nyx">Mind</span></div>
+      <p class="pin-label">Sign in to sync across all your devices</p>
+      <div id="login-form">
+        <input type="email" id="login-email" class="login-email-input" placeholder="your@email.com" autocomplete="email" />
+        <button id="login-btn" class="btn-login-send">Send Magic Link →</button>
+        <p id="login-msg" class="pin-error"></p>
+      </div>
+      <div id="login-sent" style="display:none">
+        <p class="login-sent-msg">✉️ Check your email!<br/><span>Click the link to sign in — then come back here.</span></p>
+      </div>
+    </div>
+  </div>
+
   <!-- PIN Lock Screen -->
   <div id="pin-screen">
     <div class="pin-box">
@@ -363,6 +379,7 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2/dist/chartjs-plugin-datalabels.min.js"></script>

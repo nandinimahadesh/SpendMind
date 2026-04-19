@@ -1,5 +1,128 @@
 'use strict';
 
+// ── Supabase ──────────────────────────────────────────────────────────────────
+const SUPABASE_URL  = 'https://midulrekmtkdbipyiexy.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1pZHVscmVrbXRrZGJpcHlpZXh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2MDg4MzAsImV4cCI6MjA5MjE4NDgzMH0.0XecU4IIwWnBKNzPq0-YrXlwD79FVcTphWwXffubDlQ';
+const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON) : null;
+let sbUser = null;
+let _syncReady = false; // true only after Supabase load completes — prevents race conditions
+
+// ── Supabase sync helpers ─────────────────────────────────────────────────────
+async function sbSyncEntries(e) {
+  if (!sbUser || !sb) return;
+  try {
+    await sb.from('entries').delete().eq('user_id', sbUser.id);
+    if (e.length) {
+      await sb.from('entries').insert(e.map(en => ({
+        id: en.id, user_id: sbUser.id, type: en.type, category: en.category,
+        description: en.description, amount: en.amount, date: en.date,
+        payment: en.payment, recurring_id: en.recurringId || null,
+      })));
+    }
+  } catch (err) { console.warn('sbSyncEntries:', err.message); }
+}
+
+async function sbSyncCategories(c) {
+  if (!sbUser || !sb) return;
+  try {
+    await sb.from('categories').delete().eq('user_id', sbUser.id);
+    const rows = [
+      ...c.expense.map(cat => ({ user_id: sbUser.id, type: 'expense', value: cat.value, label: cat.label })),
+      ...c.income.map(cat  => ({ user_id: sbUser.id, type: 'income',  value: cat.value, label: cat.label })),
+    ];
+    if (rows.length) await sb.from('categories').insert(rows);
+  } catch (err) { console.warn('sbSyncCategories:', err.message); }
+}
+
+async function sbSyncBudgets(b) {
+  if (!sbUser || !sb) return;
+  try {
+    await sb.from('budgets').delete().eq('user_id', sbUser.id);
+    const rows = Object.entries(b).map(([cat, amt]) => ({ user_id: sbUser.id, category: cat, amount: amt }));
+    if (rows.length) await sb.from('budgets').insert(rows);
+  } catch (err) { console.warn('sbSyncBudgets:', err.message); }
+}
+
+async function sbSyncRecurrings(r) {
+  if (!sbUser || !sb) return;
+  try {
+    await sb.from('recurring_expenses').delete().eq('user_id', sbUser.id);
+    if (r.length) {
+      await sb.from('recurring_expenses').insert(r.map(re => ({
+        id: re.id, user_id: sbUser.id, type: re.type, category: re.category,
+        description: re.description, amount: re.amount, payment: re.payment,
+        day_of_month: re.dayOfMonth,
+      })));
+    }
+  } catch (err) { console.warn('sbSyncRecurrings:', err.message); }
+}
+
+// ── Load all data from Supabase after login ───────────────────────────────────
+async function loadFromSupabase() {
+  if (!sbUser || !sb) return;
+  _syncReady = false;
+  try {
+    showToast('Syncing…');
+    const [{ data: eRows }, { data: cRows }, { data: bRows }, { data: rRows }] = await Promise.all([
+      sb.from('entries').select('*').eq('user_id', sbUser.id),
+      sb.from('categories').select('*').eq('user_id', sbUser.id),
+      sb.from('budgets').select('*').eq('user_id', sbUser.id),
+      sb.from('recurring_expenses').select('*').eq('user_id', sbUser.id),
+    ]);
+
+    // Entries
+    if (eRows && eRows.length > 0) {
+      entries = eRows.map(r => ({
+        id: r.id, type: r.type, category: r.category,
+        description: r.description, amount: parseFloat(r.amount),
+        date: r.date, payment: r.payment,
+        ...(r.recurring_id ? { recurringId: r.recurring_id } : {}),
+      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    } else if (entries.length > 0) {
+      await sbSyncEntries(entries); // upload local data to Supabase
+    }
+
+    // Categories
+    if (cRows && cRows.length > 0) {
+      const exp = cRows.filter(r => r.type === 'expense').map(r => ({ value: r.value, label: r.label }));
+      const inc = cRows.filter(r => r.type === 'income').map(r  => ({ value: r.value, label: r.label }));
+      categories = { expense: exp, income: inc };
+      localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
+    } else {
+      await sbSyncCategories(categories);
+    }
+
+    // Budgets
+    if (bRows && bRows.length > 0) {
+      budgets = Object.fromEntries(bRows.map(r => [r.category, parseFloat(r.amount)]));
+      localStorage.setItem(BUDGET_KEY, JSON.stringify(budgets));
+    } else if (Object.keys(budgets).length > 0) {
+      await sbSyncBudgets(budgets);
+    }
+
+    // Recurring
+    if (rRows && rRows.length > 0) {
+      recurrings = rRows.map(r => ({
+        id: r.id, type: r.type, category: r.category, description: r.description,
+        amount: parseFloat(r.amount), payment: r.payment, dayOfMonth: r.day_of_month,
+      }));
+      localStorage.setItem(RECURRING_KEY, JSON.stringify(recurrings));
+    } else if (recurrings.length > 0) {
+      await sbSyncRecurrings(recurrings);
+    }
+
+    _syncReady = true;
+    populateCategorySelect(typeInput.value);
+    render();
+    showToast('✓ Synced');
+  } catch (err) {
+    console.error('Supabase sync error:', err);
+    _syncReady = true; // allow local saves to proceed
+    showToast('Sync failed — using local data');
+  }
+}
+
 // ── Storage ──────────────────────────────────────────────────────────────────
 let STORAGE_KEY    = 'broketracker_entries';
 let BUDGET_KEY     = 'spendmind_budgets';
@@ -12,25 +135,37 @@ function loadEntries() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
   catch { return []; }
 }
-function saveEntries(e) { localStorage.setItem(STORAGE_KEY, JSON.stringify(e)); }
+function saveEntries(e) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(e));
+  if (_syncReady) sbSyncEntries(e);
+}
 
 function loadBudgets() {
   try { return JSON.parse(localStorage.getItem(BUDGET_KEY)) || {}; }
   catch { return {}; }
 }
-function saveBudgets(b) { localStorage.setItem(BUDGET_KEY, JSON.stringify(b)); }
+function saveBudgets(b) {
+  localStorage.setItem(BUDGET_KEY, JSON.stringify(b));
+  if (_syncReady) sbSyncBudgets(b);
+}
 
 function loadCategories() {
   try { return JSON.parse(localStorage.getItem(CATEGORIES_KEY)) || null; }
   catch { return null; }
 }
-function saveCategories(c) { localStorage.setItem(CATEGORIES_KEY, JSON.stringify(c)); }
+function saveCategories(c) {
+  localStorage.setItem(CATEGORIES_KEY, JSON.stringify(c));
+  if (_syncReady) sbSyncCategories(c);
+}
 
 function loadRecurrings() {
   try { return JSON.parse(localStorage.getItem(RECURRING_KEY)) || []; }
   catch { return []; }
 }
-function saveRecurrings(r) { localStorage.setItem(RECURRING_KEY, JSON.stringify(r)); }
+function saveRecurrings(r) {
+  localStorage.setItem(RECURRING_KEY, JSON.stringify(r));
+  if (_syncReady) sbSyncRecurrings(r);
+}
 
 function getRegisteredPins() {
   try { return JSON.parse(localStorage.getItem(PINS_KEY)) || []; }
@@ -1381,7 +1516,7 @@ document.getElementById('save-budgets').addEventListener('click', () => {
 });
 
 // ── PIN Lock ──────────────────────────────────────────────────────────────────
-(function () {
+function startPinFlow() {
   const SESSION_KEY = 'spendmind_session_pin';
   const pinScreen   = document.getElementById('pin-screen');
   const pinBox      = document.querySelector('.pin-box');
@@ -1456,6 +1591,8 @@ document.getElementById('save-budgets').addEventListener('click', () => {
     activatePin(pin);
     pinScreen.classList.add('hidden');
     init();
+    // If connected to Supabase, load fresh data from cloud
+    if (sbUser) loadFromSupabase();
   }
 
   function updateDots() {
@@ -1536,7 +1673,7 @@ document.getElementById('save-budgets').addEventListener('click', () => {
       pinError.textContent = '';
     }
   });
-})();
+} // end startPinFlow
 
 // ── Interactive beam + cursor glow ───────────────────────────────────────────
 (function () {
@@ -2350,5 +2487,67 @@ document.getElementById('export-report').addEventListener('click', async () => {
     btn.textContent = '↡ Export';
   }
 });
+
+// ── Auth Init ─────────────────────────────────────────────────────────────────
+// Decides whether to use Supabase auth or fall back to local-only mode
+(async function initAuth() {
+  const loginScreen = document.getElementById('login-screen');
+  const pinScreen   = document.getElementById('pin-screen');
+
+  // No Supabase available (file:// or CDN blocked) — run purely local
+  if (!sb) {
+    startPinFlow();
+    return;
+  }
+
+  // Check for existing Supabase session
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    sbUser = session.user;
+    startPinFlow();
+    return;
+  }
+
+  // No session — hide PIN screen, show login
+  pinScreen.style.display = 'none';
+  loginScreen.style.display = 'flex';
+
+  // Handle magic-link redirect + future sign-ins
+  sb.auth.onAuthStateChange((_event, session) => {
+    if (session && !sbUser) {
+      sbUser = session.user;
+      loginScreen.style.display = 'none';
+      pinScreen.style.display   = '';
+      startPinFlow();
+    }
+  });
+
+  // Login button — send magic link
+  document.getElementById('login-btn').addEventListener('click', async () => {
+    const email  = document.getElementById('login-email').value.trim();
+    const msgEl  = document.getElementById('login-msg');
+    const loginBtn = document.getElementById('login-btn');
+    if (!email) { document.getElementById('login-email').focus(); return; }
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Sending…';
+    msgEl.textContent = '';
+    const { error } = await sb.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: window.location.origin + window.location.pathname },
+    });
+    if (error) {
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Send Magic Link →';
+      msgEl.textContent = 'Error: ' + error.message;
+    } else {
+      document.getElementById('login-form').style.display = 'none';
+      document.getElementById('login-sent').style.display  = 'block';
+    }
+  });
+
+  document.getElementById('login-email').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('login-btn').click();
+  });
+})();
 
 // ── Boot: triggered by PIN lock after successful unlock ───────────────────────
