@@ -1501,6 +1501,13 @@ input::placeholder { color: var(--muted); opacity: 1; }
 }
 .voice-text-parse:hover { background: rgba(167,139,250,.3); }
 
+.voice-safari-hint {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: center;
+  margin: -4px 0 8px;
+}
+
 .voice-result {
   background: rgba(167,139,250,.07);
   border: 1px solid rgba(167,139,250,.25);

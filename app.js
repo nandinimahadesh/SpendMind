@@ -1860,14 +1860,18 @@ document.getElementById('save-budgets').addEventListener('click', () => {
   const retryBtn     = document.getElementById('voice-retry');
   const dismissBtn   = document.getElementById('voice-dismiss');
 
-  const hasSpeech = !!SpeechRecognition;
+  const isSafari  = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const hasSpeech = !!SpeechRecognition && !isSafari; // Safari mic is unreliable — use text
+  const hasMic    = !!SpeechRecognition;               // Safari still has mic as fallback
   let lastParsed  = null;
   let listening   = false;
 
   // Update button label based on capability
   if (!hasSpeech) {
     btn.textContent = '✍️ Quick Log';
-    btn.title = 'Type a quick description — e.g. "Coffee 250 today"';
+    btn.title = isSafari
+      ? 'Type your expense — Safari mic is unreliable. Use iPhone keyboard mic 🎤 inside the box.'
+      : 'Type a quick description — e.g. "Coffee 250 today"';
   }
 
   // ── Number-word → digit converter ───────────────────────────────────────────
@@ -2094,6 +2098,8 @@ document.getElementById('save-budgets').addEventListener('click', () => {
     typeWrap.style.display  = 'flex';
     resultBox.style.display = 'none';
     textInput.value = '';
+    const hint = document.getElementById('voice-safari-hint');
+    if (hint) hint.style.display = isSafari ? 'block' : 'none';
     textInput.focus();
   }
 
