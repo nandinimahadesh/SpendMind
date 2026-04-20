@@ -1298,6 +1298,77 @@ function parseFile(file) {
   reader.readAsBinaryString(file);
 }
 
+// ── Detect GPay CSV format ────────────────────────────────────────────────────
+function isGPayFormat(headers) {
+  const h = headers.join('|').toLowerCase();
+  return (h.includes('transaction id') || h.includes('transaction note') || h.includes('paid to') || h.includes('received from'));
+}
+
+function processGPay(raw) {
+  // Find header row
+  let headerIdx = 0;
+  for (let i = 0; i < Math.min(8, raw.length); i++) {
+    const joined = raw[i].join('|').toLowerCase();
+    if (joined.includes('date') && (joined.includes('amount') || joined.includes('debit') || joined.includes('credit'))) {
+      headerIdx = i; break;
+    }
+  }
+  const headers = raw[headerIdx].map(h => String(h).trim().toLowerCase());
+  const col = name => headers.findIndex(h => h.includes(name));
+
+  const iDate  = col('date');
+  const iDesc  = Math.max(col('description'), col('note'), col('narration'), col('paid to'), col('received from'), col('transaction note'));
+  const iDebit = col('debit');
+  const iCredit= col('credit');
+  const iAmt   = col('amount') >= 0 ? col('amount') : -1;
+
+  const valid = [], errors = [];
+
+  raw.slice(headerIdx + 1).forEach((row, i) => {
+    if (row.every(c => String(c).trim() === '')) return;
+
+    const rawDate = String(row[iDate] || '').trim();
+    const rawDesc = iDesc >= 0 ? String(row[iDesc] || '').trim() : '';
+
+    // Handle debit/credit columns OR single amount column with +/-
+    let amount = 0;
+    let type = 'expense';
+
+    if (iDebit >= 0 || iCredit >= 0) {
+      const debit  = parseFloat(String(row[iDebit]  || '0').replace(/[₹,\s]/g, '')) || 0;
+      const credit = parseFloat(String(row[iCredit] || '0').replace(/[₹,\s]/g, '')) || 0;
+      if (debit > 0)  { amount = debit;  type = 'expense'; }
+      if (credit > 0) { amount = credit; type = 'income';  }
+    } else if (iAmt >= 0) {
+      const rawAmt = String(row[iAmt] || '').replace(/[₹,\s]/g, '');
+      amount = Math.abs(parseFloat(rawAmt)) || 0;
+      type = rawAmt.startsWith('-') ? 'expense' : 'income';
+    }
+
+    const date = parseDate(rawDate);
+    if (!date) { errors.push(`Row ${i + 2}: invalid date "${rawDate}"`); return; }
+    if (!amount || amount <= 0) return; // skip zero rows silently
+
+    // Skip failed/pending transactions
+    const rowText = row.join('|').toLowerCase();
+    if (rowText.includes('failed') || rowText.includes('pending') || rowText.includes('reversed')) return;
+
+    const category = matchCategory(rawDesc);
+
+    valid.push({
+      id:          crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2) + i,
+      type,
+      date,
+      category,
+      description: rawDesc || category,
+      amount:      Math.round(amount * 100) / 100,
+      payment:     'cash',
+    });
+  });
+
+  renderPreview(valid, errors);
+}
+
 // ── Process raw rows ──────────────────────────────────────────────────────────
 function processRows(raw) {
   if (raw.length < 2) { showImportError('File appears empty.'); return; }
@@ -1310,6 +1381,10 @@ function processRows(raw) {
   }
 
   const headers = raw[headerIdx].map(h => String(h).trim().toLowerCase());
+
+  // Auto-detect GPay / UPI statement format
+  if (isGPayFormat(headers)) { processGPay(raw); return; }
+
   const col = name => headers.findIndex(h => h.includes(name));
 
   const iDate   = col('date');
