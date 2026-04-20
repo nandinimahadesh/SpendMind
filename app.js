@@ -1231,10 +1231,9 @@ const confirmImport  = document.getElementById('confirm-import');
 let pendingRows = []; // valid parsed rows ready to import
 
 // Open / close
-document.getElementById('open-import').addEventListener('click', () => {
-  importOverlay.classList.add('active');
-  resetImportModal();
-});
+function openImportModal() { importOverlay.classList.add('active'); resetImportModal(); }
+document.getElementById('open-import').addEventListener('click', openImportModal);
+document.getElementById('open-import-inline').addEventListener('click', openImportModal);
 document.getElementById('close-import').addEventListener('click', closeImport);
 document.getElementById('cancel-import').addEventListener('click', closeImport);
 importOverlay.addEventListener('click', e => { if (e.target === importOverlay) closeImport(); });
