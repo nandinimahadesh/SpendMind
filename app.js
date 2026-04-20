@@ -1677,6 +1677,9 @@ function startPinFlow() {
 
 // ── Interactive beam + cursor glow ───────────────────────────────────────────
 (function () {
+  // Skip on touch/mobile — saves battery and prevents heating
+  if ('ontouchstart' in window || window.matchMedia('(max-width:520px)').matches) return;
+
   const beam       = document.getElementById('orb-beam');
   const beamSpread = document.getElementById('orb-beam-spread');
   const glow       = document.getElementById('cursor-glow');
@@ -2379,6 +2382,22 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   });
 }
+
+// ── Offline / Online sync ─────────────────────────────────────────────────────
+window.addEventListener('online', async () => {
+  if (!sbUser) return;
+  showToast('Back online — syncing…');
+  // Push current local state up to Supabase
+  await sbSyncEntries(entries);
+  await sbSyncCategories(categories);
+  await sbSyncBudgets(budgets);
+  await sbSyncRecurrings(recurrings);
+  showToast('✓ Synced');
+});
+
+window.addEventListener('offline', () => {
+  showToast('You\'re offline — changes saved locally');
+});
 
 // ── Export Report ─────────────────────────────────────────────────────────────
 document.getElementById('export-report').addEventListener('click', async () => {

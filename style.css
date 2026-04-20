@@ -997,6 +997,13 @@ input::placeholder { color: var(--muted); opacity: 1; }
   .pin-grid            { gap: 10px; }
   .pin-key             { border-radius: 12px; font-size: 1.1rem; }
   .pin-brand           { font-size: 1.3rem; }
+
+  /* Kill GPU-heavy background effects on mobile to prevent heating */
+  .orb, .orb-beam, .orb-beam-spread, .cursor-glow { display: none !important; }
+  .orb-1,.orb-2,.orb-3,.orb-4,.orb-5 { animation: none !important; }
+
+  /* Make Import button visible without scrolling */
+  .btn-import-nav { display: flex; }
 }
 
 /* ── Login Screen ── */
