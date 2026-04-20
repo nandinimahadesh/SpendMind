@@ -1310,6 +1310,24 @@ input::placeholder { color: var(--muted); opacity: 1; }
 @media (max-width: 520px) {
   .btn-categories-nav { font-size: 0; padding: 7px 10px; }
   .btn-categories-nav::before { content: '⊞'; font-size: 0.85rem; }
+
+  /* Categories modal — mobile fixes */
+  .modal { padding: 18px 14px; gap: 12px; }
+  .cat-list {
+    max-height: 160px;
+    gap: 6px;
+  }
+  .cat-item {
+    padding: 5px 8px 5px 8px;
+  }
+  .cat-item-name  { font-size: 0.75rem; }
+  .cat-item-emoji { font-size: 0.8rem; }
+  /* Always show delete/rename on touch devices */
+  .cat-delete,
+  .cat-rename { opacity: 0.6 !important; }
+  .cat-add-form { flex-wrap: wrap; gap: 6px; }
+  .cat-name-field { min-width: 0; flex: 1 1 120px; }
+  .cat-emoji-wrap { flex-shrink: 0; }
 }
 
 /* ── Edit mode ── */
