@@ -443,8 +443,8 @@ function init() {
 // ── Summary ───────────────────────────────────────────────────────────────────
 function updateSummary() {
   const ve     = getViewEntries();
-  const total  = ve.reduce((s, e) => s + e.amount, 0);
-  const credit = ve.filter(e => e.payment === 'credit').reduce((s, e) => s + e.amount, 0);
+  const total  = ve.filter(e => e.type !== 'income').reduce((s, e) => s + e.amount, 0);
+  const credit = ve.filter(e => e.type !== 'income' && e.payment === 'credit').reduce((s, e) => s + e.amount, 0);
 
   animateValue(totalSpentEl,  total);
   animateValue(totalCreditEl, credit);
