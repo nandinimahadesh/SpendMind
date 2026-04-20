@@ -977,6 +977,7 @@ input::placeholder { color: var(--muted); opacity: 1; }
   .list-header         { flex-direction: column; align-items: flex-start; gap: 10px; }
   .list-controls       { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .list-controls select { width: 100%; }
+  .search-input        { grid-column: 1 / -1; width: 100%; box-sizing: border-box; }
   .btn-clear           { grid-column: 1 / -1; }
 
   /* Charts */
