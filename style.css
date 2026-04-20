@@ -1036,6 +1036,17 @@ input::placeholder { color: var(--muted); opacity: 1; }
   transition: opacity .2s;
 }
 .btn-login-send:disabled { opacity: .5; cursor: not-allowed; }
+.login-switch-txt {
+  text-align: center;
+  font-size: .82rem;
+  color: var(--muted);
+  margin-top: 10px;
+}
+.login-switch-txt span {
+  color: var(--purple);
+  cursor: pointer;
+  text-decoration: underline;
+}
 .login-sent-msg {
   text-align: center;
   font-size: .95rem;

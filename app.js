@@ -2512,41 +2512,64 @@ document.getElementById('export-report').addEventListener('click', async () => {
   pinScreen.style.display = 'none';
   loginScreen.style.display = 'flex';
 
-  // Handle magic-link redirect + future sign-ins
-  sb.auth.onAuthStateChange((_event, session) => {
-    if (session && !sbUser) {
-      sbUser = session.user;
-      loginScreen.style.display = 'none';
-      pinScreen.style.display   = '';
-      startPinFlow();
-    }
-  });
+  let isSignUp = false;
 
-  // Login button — send magic link
+  function setMode(signup) {
+    isSignUp = signup;
+    document.getElementById('login-title').textContent   = signup ? 'Create account' : 'Sign in';
+    document.getElementById('login-btn').textContent     = signup ? 'Create Account →' : 'Sign In →';
+    document.getElementById('login-switch-btn').textContent = signup ? 'Sign in instead' : 'Create one';
+    document.getElementById('login-msg').textContent = '';
+    document.getElementById('login-password').autocomplete = signup ? 'new-password' : 'current-password';
+  }
+
+  document.getElementById('login-switch-btn').addEventListener('click', () => setMode(!isSignUp));
+
   document.getElementById('login-btn').addEventListener('click', async () => {
-    const email  = document.getElementById('login-email').value.trim();
-    const msgEl  = document.getElementById('login-msg');
+    const email    = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const msgEl    = document.getElementById('login-msg');
     const loginBtn = document.getElementById('login-btn');
-    if (!email) { document.getElementById('login-email').focus(); return; }
+    if (!email || !password) { msgEl.textContent = 'Enter email and password.'; return; }
     loginBtn.disabled = true;
-    loginBtn.textContent = 'Sending…';
+    loginBtn.textContent = isSignUp ? 'Creating…' : 'Signing in…';
     msgEl.textContent = '';
-    const { error } = await sb.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin + window.location.pathname },
-    });
+
+    let error;
+    if (isSignUp) {
+      ({ error } = await sb.auth.signUp({ email, password }));
+    } else {
+      const { data, error: e } = await sb.auth.signInWithPassword({ email, password });
+      error = e;
+      if (!error && data.session) {
+        sbUser = data.session.user;
+        loginScreen.style.display = 'none';
+        pinScreen.style.display   = '';
+        startPinFlow();
+        return;
+      }
+    }
+
     if (error) {
       loginBtn.disabled = false;
-      loginBtn.textContent = 'Send Magic Link →';
-      msgEl.textContent = 'Error: ' + error.message;
-    } else {
-      document.getElementById('login-form').style.display = 'none';
-      document.getElementById('login-sent').style.display  = 'block';
+      loginBtn.textContent = isSignUp ? 'Create Account →' : 'Sign In →';
+      msgEl.textContent = error.message.includes('Invalid') ? 'Wrong email or password.' : error.message;
+    } else if (isSignUp) {
+      // Auto sign-in after sign-up
+      const { data } = await sb.auth.signInWithPassword({ email, password });
+      if (data?.session) {
+        sbUser = data.session.user;
+        loginScreen.style.display = 'none';
+        pinScreen.style.display   = '';
+        startPinFlow();
+      }
     }
   });
 
-  document.getElementById('login-email').addEventListener('keydown', e => {
-    if (e.key === 'Enter') document.getElementById('login-btn').click();
+  ['login-email', 'login-password'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('login-btn').click();
+    });
   });
 })();
 

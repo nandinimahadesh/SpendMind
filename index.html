@@ -16,18 +16,17 @@
 </head>
 <body>
 
-  <!-- Login / Email Auth Screen (Supabase magic link) -->
+  <!-- Login / Email Auth Screen -->
   <div id="login-screen" style="display:none">
     <div class="pin-box">
       <div class="pin-brand"><span class="brand-main">Spend</span><span class="brand-nyx">Mind</span></div>
-      <p class="pin-label">Sign in to sync across all your devices</p>
+      <p class="pin-label" id="login-title">Sign in</p>
       <div id="login-form">
         <input type="email" id="login-email" class="login-email-input" placeholder="your@email.com" autocomplete="email" />
-        <button id="login-btn" class="btn-login-send">Send Magic Link →</button>
+        <input type="password" id="login-password" class="login-email-input" placeholder="Password" autocomplete="current-password" />
+        <button id="login-btn" class="btn-login-send">Sign In →</button>
         <p id="login-msg" class="pin-error"></p>
-      </div>
-      <div id="login-sent" style="display:none">
-        <p class="login-sent-msg">✉️ Check your email!<br/><span>Click the link to sign in — then come back here.</span></p>
+        <p id="login-switch" class="login-switch-txt">No account? <span id="login-switch-btn">Create one</span></p>
       </div>
     </div>
   </div>
