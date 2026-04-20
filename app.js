@@ -3,7 +3,9 @@
 // ── Supabase ──────────────────────────────────────────────────────────────────
 const SUPABASE_URL  = 'https://midulrekmtkdbipyiexy.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1pZHVscmVrbXRrZGJpcHlpZXh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2MDg4MzAsImV4cCI6MjA5MjE4NDgzMH0.0XecU4IIwWnBKNzPq0-YrXlwD79FVcTphWwXffubDlQ';
-const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON) : null;
+const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+  auth: { persistSession: true, storageKey: 'spendmind_auth', autoRefreshToken: true },
+}) : null;
 let sbUser = null;
 
 // ── Supabase sync helpers ─────────────────────────────────────────────────────
