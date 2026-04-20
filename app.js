@@ -14,7 +14,7 @@ async function sbSyncEntries(e) {
     await sb.from('entries').delete().eq('user_id', sbUser.id);
     if (e.length) {
       await sb.from('entries').insert(e.map(en => ({
-        id: en.id, user_id: sbUser.id, type: en.type, category: en.category,
+        id: en.id, user_id: sbUser.id, type: en.type || 'expense', category: en.category,
         description: en.description, amount: en.amount, date: en.date,
         payment: en.payment, recurring_id: en.recurringId || null,
       })));
@@ -1347,6 +1347,7 @@ function processRows(raw) {
 
     valid.push({
       id:          crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2) + i,
+      type:        'expense',
       date,
       category,
       description: rawNote || category,
