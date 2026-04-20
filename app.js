@@ -5,7 +5,6 @@ const SUPABASE_URL  = 'https://midulrekmtkdbipyiexy.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1pZHVscmVrbXRrZGJpcHlpZXh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2MDg4MzAsImV4cCI6MjA5MjE4NDgzMH0.0XecU4IIwWnBKNzPq0-YrXlwD79FVcTphWwXffubDlQ';
 const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON) : null;
 let sbUser = null;
-let _syncReady = false; // true only after Supabase load completes — prevents race conditions
 
 // ── Supabase sync helpers ─────────────────────────────────────────────────────
 async function sbSyncEntries(e) {
@@ -60,7 +59,6 @@ async function sbSyncRecurrings(r) {
 // ── Load all data from Supabase after login ───────────────────────────────────
 async function loadFromSupabase() {
   if (!sbUser || !sb) return;
-  _syncReady = false;
   try {
     showToast('Syncing…');
     const [{ data: eRows }, { data: cRows }, { data: bRows }, { data: rRows }] = await Promise.all([
@@ -112,13 +110,11 @@ async function loadFromSupabase() {
       await sbSyncRecurrings(recurrings);
     }
 
-    _syncReady = true;
     populateCategorySelect(typeInput.value);
     render();
     showToast('✓ Synced');
   } catch (err) {
     console.error('Supabase sync error:', err);
-    _syncReady = true; // allow local saves to proceed
     showToast('Sync failed — using local data');
   }
 }
@@ -137,7 +133,7 @@ function loadEntries() {
 }
 function saveEntries(e) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(e));
-  if (_syncReady) sbSyncEntries(e);
+  sbSyncEntries(e);
 }
 
 function loadBudgets() {
@@ -146,7 +142,7 @@ function loadBudgets() {
 }
 function saveBudgets(b) {
   localStorage.setItem(BUDGET_KEY, JSON.stringify(b));
-  if (_syncReady) sbSyncBudgets(b);
+  sbSyncBudgets(b);
 }
 
 function loadCategories() {
@@ -155,7 +151,7 @@ function loadCategories() {
 }
 function saveCategories(c) {
   localStorage.setItem(CATEGORIES_KEY, JSON.stringify(c));
-  if (_syncReady) sbSyncCategories(c);
+  sbSyncCategories(c);
 }
 
 function loadRecurrings() {
@@ -164,7 +160,7 @@ function loadRecurrings() {
 }
 function saveRecurrings(r) {
   localStorage.setItem(RECURRING_KEY, JSON.stringify(r));
-  if (_syncReady) sbSyncRecurrings(r);
+  sbSyncRecurrings(r);
 }
 
 function getRegisteredPins() {
@@ -1535,6 +1531,7 @@ function startPinFlow() {
     activatePin(sessionPin);
     pinScreen.classList.add('hidden');
     init();
+    if (sbUser) loadFromSupabase(); // always sync from Supabase on load
     return;
   }
 
