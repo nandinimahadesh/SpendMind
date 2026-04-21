@@ -816,10 +816,7 @@ function updateTimelineChart() {
         legend: { display: false },
         datalabels: {
           ...DL_TOP,
-          display: ctx => {
-            const v = ctx.dataset.data[ctx.dataIndex];
-            return v > 0 && v >= (avg * 0.5); // only label bars worth calling out
-          },
+          display: ctx => ctx.dataset.data[ctx.dataIndex] > 0,
           color: ctx => {
             const v = ctx.dataset.data[ctx.dataIndex];
             if (v > avg * 1.75) return '#FB7185';
