@@ -75,6 +75,7 @@
       <button type="button" id="open-categories" class="btn-categories-nav">&#9776; Categories</button>
       <button type="button" id="open-import" class="btn-import-nav">&#8679; Import</button>
       <button type="button" id="export-report" class="btn-export-nav">&#8681; Export</button>
+      <button type="button" id="open-account" class="btn-account-nav" title="Account">&#128100;</button>
     </div>
   </nav>
 
@@ -376,6 +377,30 @@
       <div class="modal-footer">
         <button class="btn-cancel" id="cancel-import">Cancel</button>
         <button class="btn-confirm" id="confirm-import" disabled>Import</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Account Modal -->
+  <div class="modal-overlay" id="account-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Account</h3>
+        <button class="modal-close" id="close-account">✕</button>
+      </div>
+      <div class="account-body">
+        <div class="account-email-row">
+          <span class="account-label">Signed in as</span>
+          <span class="account-email" id="account-email-display">—</span>
+        </div>
+        <hr class="account-divider"/>
+        <p class="account-section-title">Change Password</p>
+        <input type="password" id="account-new-password" class="login-email-input" placeholder="New password" autocomplete="new-password"/>
+        <input type="password" id="account-confirm-password" class="login-email-input" placeholder="Confirm new password" autocomplete="new-password"/>
+        <button id="account-save-password" class="btn-login-send">Update Password</button>
+        <p id="account-msg" class="pin-error" style="text-align:center"></p>
+        <hr class="account-divider"/>
+        <button id="account-logout" class="btn-account-logout">Sign Out</button>
       </div>
     </div>
   </div>

@@ -2751,4 +2751,45 @@ document.getElementById('export-report').addEventListener('click', async () => {
   });
 })();
 
+// ── Account Modal ─────────────────────────────────────────────────────────────
+(function () {
+  const overlay   = document.getElementById('account-overlay');
+  const closeBtn  = document.getElementById('close-account');
+  const openBtn   = document.getElementById('open-account');
+  const msgEl     = document.getElementById('account-msg');
+
+  function openAccount() {
+    document.getElementById('account-email-display').textContent = sbUser ? sbUser.email : '—';
+    document.getElementById('account-new-password').value = '';
+    document.getElementById('account-confirm-password').value = '';
+    msgEl.textContent = '';
+    overlay.classList.add('active');
+  }
+
+  openBtn.addEventListener('click', openAccount);
+  closeBtn.addEventListener('click', () => overlay.classList.remove('active'));
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('active'); });
+
+  document.getElementById('account-save-password').addEventListener('click', async () => {
+    const pw1 = document.getElementById('account-new-password').value;
+    const pw2 = document.getElementById('account-confirm-password').value;
+    if (!pw1) { msgEl.textContent = 'Enter a new password.'; msgEl.style.color = '#fb7185'; return; }
+    if (pw1 !== pw2) { msgEl.textContent = 'Passwords don\'t match.'; msgEl.style.color = '#fb7185'; return; }
+    if (pw1.length < 6) { msgEl.textContent = 'Password must be at least 6 characters.'; msgEl.style.color = '#fb7185'; return; }
+    const { error } = await sb.auth.updateUser({ password: pw1 });
+    if (error) {
+      msgEl.textContent = error.message;
+      msgEl.style.color = '#fb7185';
+    } else {
+      msgEl.textContent = 'Password updated!';
+      msgEl.style.color = '#34d399';
+    }
+  });
+
+  document.getElementById('account-logout').addEventListener('click', async () => {
+    await sb.auth.signOut();
+    location.reload();
+  });
+})();
+
 // ── Boot: triggered by PIN lock after successful unlock ───────────────────────

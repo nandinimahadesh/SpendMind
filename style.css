@@ -215,6 +215,43 @@ body {
   cursor: wait;
 }
 
+/* ── Account Nav Button ── */
+.btn-account-nav {
+  background: rgba(167,139,250,.12);
+  border: 1px solid rgba(167,139,250,.3);
+  color: #a78bfa;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background .2s, box-shadow .2s;
+}
+.btn-account-nav:hover {
+  background: rgba(167,139,250,.22);
+  box-shadow: 0 0 14px rgba(167,139,250,.2);
+}
+
+/* ── Account Modal Body ── */
+.account-body { display: flex; flex-direction: column; gap: 12px; padding: 4px 0; }
+.account-email-row { display: flex; flex-direction: column; gap: 4px; }
+.account-label { font-size: 0.75rem; color: rgba(228,232,245,.45); text-transform: uppercase; letter-spacing: .06em; }
+.account-email { font-size: 0.95rem; color: #a78bfa; font-weight: 600; word-break: break-all; }
+.account-divider { border: none; border-top: 1px solid rgba(91,141,239,.12); margin: 4px 0; }
+.account-section-title { font-size: 0.8rem; color: rgba(228,232,245,.55); text-transform: uppercase; letter-spacing: .06em; margin: 0; }
+.btn-account-logout {
+  background: rgba(251,113,133,.1);
+  border: 1px solid rgba(251,113,133,.3);
+  color: #fb7185;
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .2s;
+  width: 100%;
+}
+.btn-account-logout:hover { background: rgba(251,113,133,.2); }
+
 /* ── Animated Background ── */
 .bg {
   position: fixed;
