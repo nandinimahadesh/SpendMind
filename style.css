@@ -420,6 +420,10 @@ body {
 /* ── Greeting Bar ── */
 .greeting-bar {
   margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 .greeting-text {
   font-size: 1.5rem;
@@ -432,6 +436,23 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+.net-pill {
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 5px 14px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+.net-positive {
+  background: rgba(52,211,153,.15);
+  border: 1px solid rgba(52,211,153,.35);
+  color: #34D399;
+}
+.net-negative {
+  background: rgba(251,113,133,.15);
+  border: 1px solid rgba(251,113,133,.35);
+  color: #FB7185;
 }
 
 /* ── Summary Cards ── */

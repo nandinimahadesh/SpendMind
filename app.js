@@ -429,10 +429,19 @@ function showGreeting() {
   if (!sbUser) return;
   const greetingBar  = document.getElementById('greeting-bar');
   const greetingName = document.getElementById('greeting-name');
+  const netPill      = document.getElementById('net-pill');
   const email = sbUser.email || '';
   const name  = email.split('@')[0].replace(/[._\-0-9]+/g, ' ').trim().split(' ')[0];
   greetingName.textContent = name.charAt(0).toUpperCase() + name.slice(1);
-  greetingBar.style.display = 'block';
+  greetingBar.style.display = 'flex';
+
+  const ve      = getViewEntries();
+  const income  = ve.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
+  const expense = ve.filter(e => e.type !== 'income').reduce((s, e) => s + e.amount, 0);
+  const net     = income - expense;
+  const sign    = net >= 0 ? '+' : '';
+  netPill.textContent = `Net ${sign}₹${Math.abs(net).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+  netPill.className   = 'net-pill ' + (net >= 0 ? 'net-positive' : 'net-negative');
 }
 
 function init() {
@@ -1119,6 +1128,7 @@ function render() {
   updatePaymentChart();
   updateDailyChart();
   updateWeeklyChart();
+  showGreeting();
 }
 
 // ── Type toggle (Expense / Income) ───────────────────────────────────────────
