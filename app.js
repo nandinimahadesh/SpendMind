@@ -2680,10 +2680,28 @@ document.getElementById('export-report').addEventListener('click', async () => {
     document.getElementById('login-btn').textContent     = signup ? 'Create Account →' : 'Sign In →';
     document.getElementById('login-switch-btn').textContent = signup ? 'Sign in instead' : 'Create one';
     document.getElementById('login-msg').textContent = '';
+    document.getElementById('login-msg').style.color = '';
     document.getElementById('login-password').autocomplete = signup ? 'new-password' : 'current-password';
+    document.getElementById('login-forgot').style.display = signup ? 'none' : '';
   }
 
   document.getElementById('login-switch-btn').addEventListener('click', () => setMode(!isSignUp));
+
+  document.getElementById('login-forgot-btn').addEventListener('click', async () => {
+    const email  = document.getElementById('login-email').value.trim();
+    const msgEl  = document.getElementById('login-msg');
+    if (!email) { msgEl.textContent = 'Enter your email first.'; msgEl.style.color = '#fb7185'; return; }
+    const { error } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    });
+    if (error) {
+      msgEl.textContent = error.message;
+      msgEl.style.color = '#fb7185';
+    } else {
+      msgEl.textContent = 'Reset link sent! Check your inbox.';
+      msgEl.style.color = '#34d399';
+    }
+  });
 
   document.getElementById('login-btn').addEventListener('click', async () => {
     const email    = document.getElementById('login-email').value.trim();
