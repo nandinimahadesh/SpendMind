@@ -1349,103 +1349,75 @@ async function parseGPayPDF(arrayBuffer) {
   try {
     showToast('Reading PDF…');
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    const allLines = [];
+    const MONTHS = { jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11 };
+    // GPay PDF is 3-column: date | description | amount are all on the SAME y-level row
+    const dateRe    = /(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec),?\s*(\d{4})/i;
+    const paidToRe  = /\bPaid to\s+(.+?)(?=\s*(?:UPI|₹|$))/i;
+    const recFromRe = /\bReceived from\s+(.+?)(?=\s*(?:UPI|₹|$))/i;
+    const selfTransRe = /self\s*transfer/i;
+    const BANK_KEYWORDS = ['icici bank','hdfc bank','state bank of india','axis bank','kotak mahindra',
+      'yes bank','bank of baroda','punjab national','canara bank','union bank','indusind bank'];
+    const transactions = [];
 
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      const page   = await pdf.getPage(pageNum);
+      const page    = await pdf.getPage(pageNum);
       const content = await page.getTextContent();
-
-      // Group text items by y position
+      // Group items by y-position (snap to 2pt grid to handle sub-pixel differences)
       const byY = {};
       content.items.forEach(item => {
         if (!item.str.trim()) return;
-        const yKey = Math.round(item.transform[5] / 3) * 3;
+        const yKey = Math.round(item.transform[5] / 2) * 2;
         if (!byY[yKey]) byY[yKey] = [];
-        byY[yKey].push({ str: item.str.trim(), x: item.transform[4] });
+        byY[yKey].push({ str: item.str, x: item.transform[4] });
       });
+      // Rebuild lines top-to-bottom, joining items left-to-right
+      const lines = Object.keys(byY).map(Number).sort((a, b) => b - a)
+        .map(yKey => byY[yKey].sort((a, b) => a.x - b.x).map(i => i.str).join(' ').trim())
+        .filter(l => l.length > 1);
 
-      // Sort top→bottom, collect lines
-      Object.keys(byY).map(Number).sort((a, b) => b - a).forEach(yKey => {
-        const line = byY[yKey].sort((a, b) => a.x - b.x).map(i => i.str).join(' ').trim();
-        if (line) allLines.push(line);
-      });
-    }
-
-    const valid = [], errors = [];
-    const MONTHS = { jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11 };
-    const dateRe   = /^(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec),?\s*(\d{4})/i;
-    const amountRe = /₹\s*([\d,]+(?:\.\d{1,2})?)/;
-
-    let curDate = null, curDesc = null, curType = 'expense', curAmt = null;
-
-    const flush = () => {
-      if (curDate && curDesc && curAmt > 0) {
-        valid.push({
-          id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2) + valid.length,
-          type: curType, date: curDate, amount: curAmt, payment: 'cash',
-          category: matchGPayCategory(curDesc), description: curDesc,
+      for (const line of lines) {
+        if (!dateRe.test(line)) continue;
+        if (selfTransRe.test(line)) continue;
+        const paidToMatch  = line.match(paidToRe);
+        const recFromMatch = line.match(recFromRe);
+        if (!paidToMatch && !recFromMatch) continue;
+        // Extract all ₹ amounts; use the last one (the transaction amount column)
+        const amtRe = /₹\s*([\d,]+(?:\.\d{1,2})?)/g;
+        const amounts = [];
+        let m;
+        while ((m = amtRe.exec(line)) !== null) amounts.push(parseFloat(m[1].replace(/,/g, '')));
+        if (!amounts.length) continue;
+        const amount = amounts[amounts.length - 1];
+        if (!amount || amount <= 0) continue;
+        const dateMatch = line.match(dateRe);
+        const [, day, mon, year] = dateMatch;
+        const date = new Date(parseInt(year), MONTHS[mon.toLowerCase()], parseInt(day)).toISOString().split('T')[0];
+        let desc, type;
+        if (paidToMatch) {
+          desc = paidToMatch[1].replace(/\s*₹[\d,\.]+.*$/, '').replace(/\bUPI\b.*/i, '').trim().replace(/\.$/, '').trim();
+          type = 'expense';
+        } else {
+          desc = recFromMatch[1].replace(/\s*₹[\d,\.]+.*$/, '').replace(/\bUPI\b.*/i, '').trim().replace(/\.$/, '').trim();
+          type = 'income';
+        }
+        if (!desc || desc.length < 2) continue;
+        const dLower = desc.toLowerCase();
+        if (BANK_KEYWORDS.some(b => dLower.includes(b))) continue;
+        if (dLower.includes('failed') || dLower.includes('pending') || dLower.includes('reversed')) continue;
+        transactions.push({
+          id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2) + transactions.length,
+          type, date, amount, payment: 'cash',
+          category: matchGPayCategory(desc),
+          description: desc,
         });
       }
-      curDesc = null; curAmt = null;
-    };
-
-    const skipPatterns = ['transaction statement','date & time','transaction details','upi transaction id',
-      'paid by icici','paid by hdfc','paid by sbi','paid by axis','paid by kotak','paid by yes',
-      'paid to icici','paid to hdfc','paid to sbi','paid to axis','paid to kotak',
-      'sent','received','statement period','google pay','transaction note'];
-
-    for (const line of allLines) {
-      const lower = line.toLowerCase();
-      if (skipPatterns.some(p => lower.includes(p))) continue;
-
-      // Date line
-      const dateMatch = line.match(dateRe);
-      if (dateMatch) {
-        flush();
-        const [, day, mon, year] = dateMatch;
-        const d = new Date(parseInt(year), MONTHS[mon.toLowerCase()], parseInt(day));
-        curDate = d.toISOString().split('T')[0];
-        const amtM = line.match(amountRe);
-        if (amtM) curAmt = parseFloat(amtM[1].replace(/,/g, ''));
-        continue;
-      }
-
-      // "Paid to X" = expense
-      const paidTo = line.match(/^Paid to (.+)/i);
-      if (paidTo) {
-        curDesc = paidTo[1].replace(/\.$/, '').trim();
-        curType = 'expense';
-        const amtM = line.match(amountRe);
-        if (amtM) curAmt = parseFloat(amtM[1].replace(/,/g, ''));
-        continue;
-      }
-
-      // "Received from X" = income
-      const recFrom = line.match(/^Received from (.+)/i);
-      if (recFrom) {
-        curDesc = recFrom[1].replace(/\.$/, '').trim();
-        curType = 'income';
-        const amtM = line.match(amountRe);
-        if (amtM) curAmt = parseFloat(amtM[1].replace(/,/g, ''));
-        continue;
-      }
-
-      // Standalone amount line e.g. "₹428" or "₹5,000"
-      const amtOnly = line.match(/^₹\s*([\d,]+(?:\.\d{1,2})?)$/);
-      if (amtOnly && !curAmt) { curAmt = parseFloat(amtOnly[1].replace(/,/g, '')); continue; }
     }
-    flush();
 
-    const filtered = valid.filter(t => {
-      const d = t.description.toLowerCase();
-      return !d.includes('failed') && !d.includes('pending') && !d.includes('reversed');
-    });
-
-    if (filtered.length === 0) {
+    if (transactions.length === 0) {
       showImportError('No transactions found. Make sure this is a Google Pay PDF statement.');
       return;
     }
-    renderPreview(filtered, errors);
+    renderPreview(transactions, []);
   } catch (err) {
     showImportError('Could not parse PDF: ' + err.message);
   }
