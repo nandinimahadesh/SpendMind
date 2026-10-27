@@ -2,31 +2,31 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:         #07080F;
+  --bg:         #070E1C;
   --glass:      rgba(255,255,255,.05);
   --glass-2:    rgba(255,255,255,.09);
   --border:     rgba(255,255,255,.08);
   --border-h:   rgba(255,255,255,.18);
   --input-bg:   rgba(255,255,255,.06);
-  --text:       #F0EEFF;
-  --muted:      rgba(240,238,255,.38);
+  --text:       #E8F0FF;
+  --muted:      rgba(200,218,255,.4);
 
-  --blue:       #818CF8;
-  --blue-l:     rgba(129,140,248,.25);
-  --cyan:       #22D3EE;
-  --cyan-l:     rgba(34,211,238,.22);
-  --green:      #4ADE80;
-  --green-l:    rgba(74,222,128,.22);
-  --rose:       #F471B5;
-  --rose-l:     rgba(244,113,181,.22);
-  --violet:     #C084FC;
-  --violet-l:   rgba(192,132,252,.22);
+  --blue:       #4D9FFF;
+  --blue-l:     rgba(77,159,255,.25);
+  --cyan:       #38BDF8;
+  --cyan-l:     rgba(56,189,248,.22);
+  --green:      #34D399;
+  --green-l:    rgba(52,211,153,.22);
+  --rose:       #FB7185;
+  --rose-l:     rgba(251,113,133,.22);
+  --violet:     #818CF8;
+  --violet-l:   rgba(129,140,248,.22);
   --gold:       #FACC15;
   --gold-l:     rgba(250,204,21,.2);
 
-  --expense:    #F471B5;
-  --income:     #4ADE80;
-  --accent:     #818CF8;
+  --expense:    #FB7185;
+  --income:     #34D399;
+  --accent:     #4D9FFF;
 
   --nav-h:      62px;
   --radius:     16px;
@@ -54,11 +54,11 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0 28px;
-  background: rgba(9,11,24,.75);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border);
-  box-shadow: 0 1px 0 rgba(255,255,255,.04), 0 4px 24px rgba(0,0,0,.35);
+  background: rgba(5,10,25,.85);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  border-bottom: 1px solid rgba(77,159,255,.12);
+  box-shadow: 0 1px 0 rgba(77,159,255,.08), 0 8px 32px rgba(0,0,0,.5);
 }
 
 .topnav-brand {
@@ -72,7 +72,7 @@ body {
   font-size: 1.45rem;
   font-weight: 900;
   letter-spacing: -0.5px;
-  background: linear-gradient(135deg, #fff 0%, #E9D5FF 30%, #C084FC 60%, #818CF8 100%);
+  background: linear-gradient(135deg, #fff 0%, #BFDBFE 30%, #4D9FFF 60%, #38BDF8 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -261,26 +261,26 @@ body {
   pointer-events: none;
 }
 
-/* deep navy base */
+/* deep navy blue base */
 .bg::before {
   content: '';
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 100% 70% at 0%   40%, rgba(15,30,80,.55)  0%, transparent 55%),
-    radial-gradient(ellipse 70%  60% at 100% 80%, rgba(5, 20,55,.45)  0%, transparent 55%),
-    radial-gradient(ellipse 60%  50% at 50%  50%, rgba(8, 12,35,.6)   0%, transparent 70%),
-    linear-gradient(170deg, #0C0F22 0%, #080A18 50%, #060810 100%);
+    radial-gradient(ellipse 90% 60% at 10%  20%, rgba(20,60,160,.5)   0%, transparent 55%),
+    radial-gradient(ellipse 70% 50% at 90%  70%, rgba(10,40,120,.45)  0%, transparent 55%),
+    radial-gradient(ellipse 60% 50% at 50%  50%, rgba(8, 25, 80,.4)   0%, transparent 65%),
+    linear-gradient(170deg, #070E1C 0%, #050A16 50%, #030710 100%);
 }
 
-/* subtle circuit dot pattern */
+/* subtle dot pattern */
 .bg::after {
   content: '';
   position: absolute;
   inset: 0;
   background-image:
-    radial-gradient(circle, rgba(91,141,239,.12) 1px, transparent 1px),
-    radial-gradient(circle, rgba(34,211,238,.07) 1px, transparent 1px);
+    radial-gradient(circle, rgba(77,159,255,.1) 1px, transparent 1px),
+    radial-gradient(circle, rgba(56,189,248,.06) 1px, transparent 1px);
   background-size: 48px 48px, 96px 96px;
   background-position: 0 0, 24px 24px;
 }
@@ -348,48 +348,48 @@ body {
 /* ambient orbs */
 .orb-1 {
   position: absolute;
-  width: 550px; height: 550px;
-  top: -15%; left: -8%;
-  background: radial-gradient(circle, rgba(55,20,150,.45), transparent 65%);
-  filter: blur(80px);
+  width: 650px; height: 650px;
+  top: -15%; left: -10%;
+  background: radial-gradient(circle, rgba(30,80,220,.4), transparent 65%);
+  filter: blur(90px);
   animation: drift1 16s ease-in-out infinite;
 }
 
 .orb-2 {
   position: absolute;
-  width: 450px; height: 450px;
+  width: 500px; height: 500px;
   bottom: -10%; right: -8%;
-  background: radial-gradient(circle, rgba(20,60,160,.4), transparent 65%);
-  filter: blur(90px);
+  background: radial-gradient(circle, rgba(15,60,180,.35), transparent 65%);
+  filter: blur(100px);
   animation: drift2 20s ease-in-out infinite;
 }
 
 .orb-3 {
   position: absolute;
-  width: 380px; height: 380px;
-  top: 25%; right: 5%;
-  background: radial-gradient(circle, rgba(30,100,180,.3), transparent 65%);
-  filter: blur(100px);
-  opacity: .7;
+  width: 420px; height: 420px;
+  top: 30%; right: 8%;
+  background: radial-gradient(circle, rgba(56,189,248,.18), transparent 65%);
+  filter: blur(110px);
+  opacity: .8;
   animation: drift3 24s ease-in-out infinite;
 }
 
 .orb-4 {
   position: absolute;
-  width: 350px; height: 200px;
+  width: 380px; height: 220px;
   bottom: 5%; left: 20%;
-  background: radial-gradient(ellipse, rgba(80,20,120,.3), transparent 65%);
-  filter: blur(80px);
+  background: radial-gradient(ellipse, rgba(77,159,255,.2), transparent 65%);
+  filter: blur(85px);
   animation: drift4 22s ease-in-out infinite;
 }
 
 .orb-5 {
   position: absolute;
-  width: 280px; height: 280px;
-  top: 10%; right: 28%;
-  background: radial-gradient(circle, rgba(15,60,130,.35), transparent 65%);
-  filter: blur(90px);
-  opacity: .6;
+  width: 300px; height: 300px;
+  top: 8%; right: 25%;
+  background: radial-gradient(circle, rgba(129,140,248,.18), transparent 65%);
+  filter: blur(95px);
+  opacity: .7;
   animation: drift5 28s ease-in-out infinite;
 }
 
@@ -417,6 +417,23 @@ body {
   padding: calc(var(--nav-h) + 32px) 26px 90px;
 }
 
+/* ── Greeting Bar ── */
+.greeting-bar {
+  margin-bottom: 20px;
+}
+.greeting-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+.greeting-name {
+  background: linear-gradient(90deg, #4D9FFF, #38BDF8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 /* ── Summary Cards ── */
 .summary {
   display: grid;
@@ -426,17 +443,17 @@ body {
 }
 
 .card {
-  background: rgba(255,255,255,.038);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,.07);
-  border-radius: var(--radius);
-  padding: 22px 20px 18px;
+  background: linear-gradient(145deg, rgba(30,70,160,.25) 0%, rgba(10,30,80,.35) 100%);
+  backdrop-filter: blur(32px) saturate(160%);
+  -webkit-backdrop-filter: blur(32px) saturate(160%);
+  border: 1px solid rgba(77,159,255,.18);
+  border-radius: 20px;
+  padding: 26px 22px 20px;
   text-align: center;
   position: relative;
   overflow: hidden;
-  transition: transform .22s, box-shadow .22s, border-color .22s;
-  box-shadow: 0 2px 20px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.06);
+  transition: transform .28s cubic-bezier(.34,1.56,.64,1), box-shadow .28s, border-color .28s;
+  box-shadow: 0 8px 32px rgba(0,0,30,.5), inset 0 1px 0 rgba(255,255,255,.1), inset 0 -1px 0 rgba(0,0,0,.2);
 }
 
 .card::after {
@@ -452,11 +469,11 @@ body {
 .card:hover { transform: translateY(-3px); border-color: rgba(255,255,255,.13); }
 .card:hover::after { opacity: 1; }
 
-/* per-card accent top line + glow */
-.card--total  { border-top: 1px solid rgba(251,113,133,.45); }
-.card--credit { border-top: 1px solid rgba(91,141,239,.45);  }
-.card--day    { border-top: 1px solid rgba(251,176,64,.4);   }
-.card--week   { border-top: 1px solid rgba(52,211,153,.4);   }
+/* per-card shimmer top border */
+.card--total  { border-top: 1.5px solid rgba(251,113,133,.6); }
+.card--credit { border-top: 1.5px solid rgba(77,159,255,.6);  }
+.card--day    { border-top: 1.5px solid rgba(250,204,21,.55); }
+.card--week   { border-top: 1.5px solid rgba(52,211,153,.55); }
 
 .card--total::after  { background: radial-gradient(ellipse at 50% 110%, rgba(251,113,133,.1), transparent 60%); }
 .card--credit::after { background: radial-gradient(ellipse at 50% 110%, rgba(91,141,239,.1), transparent 60%); }
@@ -483,9 +500,9 @@ body {
 }
 
 .card-amount {
-  font-size: 1.55rem;
+  font-size: 1.75rem;
   font-weight: 800;
-  letter-spacing: -0.5px;
+  letter-spacing: -1px;
 }
 
 .card--total  .card-amount { color: var(--rose);  }

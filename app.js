@@ -425,11 +425,22 @@ function animateValue(el, target, duration = 1100) {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+function showGreeting() {
+  if (!sbUser) return;
+  const greetingBar  = document.getElementById('greeting-bar');
+  const greetingName = document.getElementById('greeting-name');
+  const email = sbUser.email || '';
+  const name  = email.split('@')[0].replace(/[._\-0-9]+/g, ' ').trim().split(' ')[0];
+  greetingName.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+  greetingBar.style.display = 'block';
+}
+
 function init() {
   syncMonthLabel();
   dateInput.value = new Date().toISOString().split('T')[0];
   populateCategorySelect('expense');
   autoLogRecurrings();
+  showGreeting();
   render();
 
   // Recurring checkbox show/hide day picker
