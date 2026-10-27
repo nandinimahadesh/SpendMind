@@ -59,6 +59,8 @@ async function sbSyncRecurrings(r) {
 }
 
 // ── Load all data from Supabase after login ───────────────────────────────────
+let _importLock = false; // prevents loadFromSupabase from clobbering a just-imported entries
+
 async function loadFromSupabase() {
   if (!sbUser || !sb) return;
   try {
@@ -71,7 +73,7 @@ async function loadFromSupabase() {
     ]);
 
     // Entries
-    if (eRows && eRows.length > 0) {
+    if (!_importLock && eRows && eRows.length > 0) {
       entries = eRows.map(r => ({
         id: r.id, type: r.type, category: r.category,
         description: r.description, amount: parseFloat(r.amount),
@@ -79,7 +81,7 @@ async function loadFromSupabase() {
         ...(r.recurring_id ? { recurringId: r.recurring_id } : {}),
       }));
       localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-    } else if (entries.length > 0) {
+    } else if (!_importLock && entries.length > 0) {
       await sbSyncEntries(entries); // upload local data to Supabase
     }
 
@@ -1632,11 +1634,15 @@ document.getElementById('preview-body').addEventListener('click', e => {
 
 // Confirm import
 confirmImport.addEventListener('click', async () => {
+  _importLock = true;
   confirmImport.disabled = true;
   confirmImport.textContent = 'Saving…';
-  entries.push(...pendingRows);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-  await sbSyncEntries(entries);
+  const merged = [...entries, ...pendingRows];
+  entries = merged;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+  await sbSyncEntries(merged);
+  entries = merged; // re-assert in case loadFromSupabase ran concurrently
+  _importLock = false;
   render();
   closeImport();
 });

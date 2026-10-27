@@ -1,4 +1,4 @@
-const CACHE = 'spendmind-v9';
+const CACHE = 'spendmind-v10';
 const CORE  = ['./index.html', './app.js', './style.css', './icon.svg', './manifest.json'];
 
 self.addEventListener('install', e => {
