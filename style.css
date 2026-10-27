@@ -38,7 +38,7 @@ body {
   min-height: 100vh;
   background-color: var(--bg);
   color: var(--text);
-  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   font-size: 15px;
   line-height: 1.5;
   overflow-x: hidden;
@@ -54,11 +54,11 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0 28px;
-  background: rgba(5,4,12,.82);
-  backdrop-filter: blur(32px) saturate(180%);
-  -webkit-backdrop-filter: blur(32px) saturate(180%);
-  border-bottom: 1px solid rgba(192,132,252,.12);
-  box-shadow: 0 1px 0 rgba(255,255,255,.05), 0 8px 32px rgba(0,0,0,.5);
+  background: rgba(9,11,24,.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 0 rgba(255,255,255,.04), 0 4px 24px rgba(0,0,0,.35);
 }
 
 .topnav-brand {
@@ -261,26 +261,26 @@ body {
   pointer-events: none;
 }
 
-/* deep black base with purple glow */
+/* deep navy base */
 .bg::before {
   content: '';
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 80% 60% at 15%  20%, rgba(120,40,200,.18) 0%, transparent 55%),
-    radial-gradient(ellipse 70% 50% at 85%  75%, rgba(80, 20,180,.14) 0%, transparent 55%),
-    radial-gradient(ellipse 50% 40% at 50%  50%, rgba(60, 10,140,.12) 0%, transparent 65%),
-    linear-gradient(170deg, #08060F 0%, #060410 50%, #040208 100%);
+    radial-gradient(ellipse 100% 70% at 0%   40%, rgba(15,30,80,.55)  0%, transparent 55%),
+    radial-gradient(ellipse 70%  60% at 100% 80%, rgba(5, 20,55,.45)  0%, transparent 55%),
+    radial-gradient(ellipse 60%  50% at 50%  50%, rgba(8, 12,35,.6)   0%, transparent 70%),
+    linear-gradient(170deg, #0C0F22 0%, #080A18 50%, #060810 100%);
 }
 
-/* subtle dot pattern */
+/* subtle circuit dot pattern */
 .bg::after {
   content: '';
   position: absolute;
   inset: 0;
   background-image:
-    radial-gradient(circle, rgba(192,132,252,.1) 1px, transparent 1px),
-    radial-gradient(circle, rgba(129,140,248,.06) 1px, transparent 1px);
+    radial-gradient(circle, rgba(91,141,239,.12) 1px, transparent 1px),
+    radial-gradient(circle, rgba(34,211,238,.07) 1px, transparent 1px);
   background-size: 48px 48px, 96px 96px;
   background-position: 0 0, 24px 24px;
 }
@@ -348,48 +348,48 @@ body {
 /* ambient orbs */
 .orb-1 {
   position: absolute;
-  width: 600px; height: 600px;
+  width: 550px; height: 550px;
   top: -15%; left: -8%;
-  background: radial-gradient(circle, rgba(139,92,246,.35), transparent 65%);
-  filter: blur(90px);
+  background: radial-gradient(circle, rgba(55,20,150,.45), transparent 65%);
+  filter: blur(80px);
   animation: drift1 16s ease-in-out infinite;
 }
 
 .orb-2 {
   position: absolute;
-  width: 500px; height: 500px;
+  width: 450px; height: 450px;
   bottom: -10%; right: -8%;
-  background: radial-gradient(circle, rgba(99,102,241,.3), transparent 65%);
-  filter: blur(100px);
+  background: radial-gradient(circle, rgba(20,60,160,.4), transparent 65%);
+  filter: blur(90px);
   animation: drift2 20s ease-in-out infinite;
 }
 
 .orb-3 {
   position: absolute;
-  width: 400px; height: 400px;
+  width: 380px; height: 380px;
   top: 25%; right: 5%;
-  background: radial-gradient(circle, rgba(192,132,252,.2), transparent 65%);
-  filter: blur(110px);
-  opacity: .8;
+  background: radial-gradient(circle, rgba(30,100,180,.3), transparent 65%);
+  filter: blur(100px);
+  opacity: .7;
   animation: drift3 24s ease-in-out infinite;
 }
 
 .orb-4 {
   position: absolute;
-  width: 380px; height: 220px;
+  width: 350px; height: 200px;
   bottom: 5%; left: 20%;
-  background: radial-gradient(ellipse, rgba(244,113,181,.18), transparent 65%);
-  filter: blur(85px);
+  background: radial-gradient(ellipse, rgba(80,20,120,.3), transparent 65%);
+  filter: blur(80px);
   animation: drift4 22s ease-in-out infinite;
 }
 
 .orb-5 {
   position: absolute;
-  width: 300px; height: 300px;
+  width: 280px; height: 280px;
   top: 10%; right: 28%;
-  background: radial-gradient(circle, rgba(129,140,248,.22), transparent 65%);
-  filter: blur(95px);
-  opacity: .7;
+  background: radial-gradient(circle, rgba(15,60,130,.35), transparent 65%);
+  filter: blur(90px);
+  opacity: .6;
   animation: drift5 28s ease-in-out infinite;
 }
 
@@ -426,17 +426,17 @@ body {
 }
 
 .card {
-  background: rgba(255,255,255,.03);
-  backdrop-filter: blur(32px);
-  -webkit-backdrop-filter: blur(32px);
-  border: 1px solid rgba(255,255,255,.09);
-  border-radius: 20px;
-  padding: 24px 20px 20px;
+  background: rgba(255,255,255,.038);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: var(--radius);
+  padding: 22px 20px 18px;
   text-align: center;
   position: relative;
   overflow: hidden;
-  transition: transform .28s cubic-bezier(.34,1.56,.64,1), box-shadow .28s, border-color .28s;
-  box-shadow: 0 4px 32px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.08), inset 0 -1px 0 rgba(0,0,0,.2);
+  transition: transform .22s, box-shadow .22s, border-color .22s;
+  box-shadow: 0 2px 20px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.06);
 }
 
 .card::after {
@@ -452,11 +452,11 @@ body {
 .card:hover { transform: translateY(-3px); border-color: rgba(255,255,255,.13); }
 .card:hover::after { opacity: 1; }
 
-/* per-card gradient top accent */
-.card--total  { border-top: 2px solid transparent; background-image: linear-gradient(rgba(255,255,255,.03), rgba(255,255,255,.03)), linear-gradient(90deg, #F471B5, #C084FC); background-origin: border-box; background-clip: padding-box, border-box; }
-.card--credit { border-top: 2px solid transparent; background-image: linear-gradient(rgba(255,255,255,.03), rgba(255,255,255,.03)), linear-gradient(90deg, #818CF8, #22D3EE); background-origin: border-box; background-clip: padding-box, border-box; }
-.card--day    { border-top: 2px solid transparent; background-image: linear-gradient(rgba(255,255,255,.03), rgba(255,255,255,.03)), linear-gradient(90deg, #FACC15, #F97316); background-origin: border-box; background-clip: padding-box, border-box; }
-.card--week   { border-top: 2px solid transparent; background-image: linear-gradient(rgba(255,255,255,.03), rgba(255,255,255,.03)), linear-gradient(90deg, #4ADE80, #22D3EE); background-origin: border-box; background-clip: padding-box, border-box; }
+/* per-card accent top line + glow */
+.card--total  { border-top: 1px solid rgba(251,113,133,.45); }
+.card--credit { border-top: 1px solid rgba(91,141,239,.45);  }
+.card--day    { border-top: 1px solid rgba(251,176,64,.4);   }
+.card--week   { border-top: 1px solid rgba(52,211,153,.4);   }
 
 .card--total::after  { background: radial-gradient(ellipse at 50% 110%, rgba(251,113,133,.1), transparent 60%); }
 .card--credit::after { background: radial-gradient(ellipse at 50% 110%, rgba(91,141,239,.1), transparent 60%); }
@@ -486,15 +486,12 @@ body {
   font-size: 1.55rem;
   font-weight: 800;
   letter-spacing: -0.5px;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
 
-.card--total  .card-amount { background-image: linear-gradient(135deg, #F471B5, #C084FC); }
-.card--credit .card-amount { background-image: linear-gradient(135deg, #818CF8, #22D3EE); }
-.card--day    .card-amount { background-image: linear-gradient(135deg, #FACC15, #F97316); }
-.card--week   .card-amount { background-image: linear-gradient(135deg, #4ADE80, #22D3EE); }
+.card--total  .card-amount { color: var(--rose);  }
+.card--credit .card-amount { color: var(--blue);  }
+.card--day    .card-amount { color: var(--gold);  }
+.card--week   .card-amount { color: var(--green); }
 
 .card-sub { font-size: 0.72rem; color: var(--muted); margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
