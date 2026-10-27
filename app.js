@@ -1631,9 +1631,12 @@ document.getElementById('preview-body').addEventListener('click', e => {
 });
 
 // Confirm import
-confirmImport.addEventListener('click', () => {
+confirmImport.addEventListener('click', async () => {
+  confirmImport.disabled = true;
+  confirmImport.textContent = 'Saving…';
   entries.push(...pendingRows);
-  saveEntries(entries);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  await sbSyncEntries(entries);
   render();
   closeImport();
 });
