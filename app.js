@@ -1299,8 +1299,14 @@ document.getElementById('download-template').addEventListener('click', () => {
   XLSX.writeFile(wb, 'BrokeTracker_Template.xlsx');
 });
 
-// ── Parse file (CSV or XLSX) ──────────────────────────────────────────────────
+// ── Parse file (CSV, XLSX, or PDF) ───────────────────────────────────────────
 function parseFile(file) {
+  if (file.name.toLowerCase().endsWith('.pdf')) {
+    const reader = new FileReader();
+    reader.onload = e => parseGPayPDF(e.target.result);
+    reader.readAsArrayBuffer(file);
+    return;
+  }
   const reader = new FileReader();
   reader.onload = e => {
     try {
@@ -1313,6 +1319,136 @@ function parseFile(file) {
     }
   };
   reader.readAsBinaryString(file);
+}
+
+// ── GPay PDF parser ───────────────────────────────────────────────────────────
+const GPAY_MERCHANT_MAP = [
+  [['blinkit','zepto','bigbasket','dmart','grofers','jiomart','swiggy instamart','nature basket','more supermarket'], 'Groceries'],
+  [['zomato','swiggy','dominos','pizza','kfc','mcdonald','burger king','subway','box8','freshmenu','lunchbox'], 'Food'],
+  [['starbucks','cafe coffee day','ccd','barista','third wave','blue tokai','la marzocco'], 'Coffee'],
+  [['ola','uber','rapido','bounce','yulu','metro','bmtc','best bus','irctc','redbus','abhibus'], 'Transport'],
+  [['amazon','flipkart','myntra','ajio','meesho','nykaa','tata cliq','snapdeal','shein'], 'Online Shopping'],
+  [['netflix','spotify','hotstar','disney','youtube premium','apple','prime video','zee5','sonyliv','jiocinema','mxplayer'], 'Subscriptions'],
+  [['gym','fitness','cult.fit','healthify','pharmeasy','apollo','medplus','1mg','netmeds','practo','lybrate'], 'Health'],
+  [['makemytrip','goibibo','cleartrip','yatra','airbnb','oyo','booking.com','hotels.com','agoda'], 'Travel'],
+  [['electricity','bescom','tata power','msedcl','bses','adani electricity','water bill','gas bill','broadband','airtel','jio','vi ','vodafone'], 'Subscriptions'],
+  [['instamart','supermart'], 'Groceries'],
+];
+
+function matchGPayCategory(desc) {
+  if (!desc) return 'Misc';
+  const lower = desc.toLowerCase();
+  for (const [keywords, category] of GPAY_MERCHANT_MAP) {
+    if (keywords.some(k => lower.includes(k))) return category;
+  }
+  return 'Misc';
+}
+
+async function parseGPayPDF(arrayBuffer) {
+  if (!window.pdfjsLib) { showImportError('PDF support not loaded. Please refresh and try again.'); return; }
+  try {
+    showToast('Reading PDF…');
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const allLines = [];
+
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page   = await pdf.getPage(pageNum);
+      const content = await page.getTextContent();
+
+      // Group text items by y position
+      const byY = {};
+      content.items.forEach(item => {
+        if (!item.str.trim()) return;
+        const yKey = Math.round(item.transform[5] / 3) * 3;
+        if (!byY[yKey]) byY[yKey] = [];
+        byY[yKey].push({ str: item.str.trim(), x: item.transform[4] });
+      });
+
+      // Sort top→bottom, collect lines
+      Object.keys(byY).map(Number).sort((a, b) => b - a).forEach(yKey => {
+        const line = byY[yKey].sort((a, b) => a.x - b.x).map(i => i.str).join(' ').trim();
+        if (line) allLines.push(line);
+      });
+    }
+
+    const valid = [], errors = [];
+    const MONTHS = { jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11 };
+    const dateRe   = /^(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec),?\s*(\d{4})/i;
+    const amountRe = /₹\s*([\d,]+(?:\.\d{1,2})?)/;
+
+    let curDate = null, curDesc = null, curType = 'expense', curAmt = null;
+
+    const flush = () => {
+      if (curDate && curDesc && curAmt > 0) {
+        valid.push({
+          id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2) + valid.length,
+          type: curType, date: curDate, amount: curAmt, payment: 'cash',
+          category: matchGPayCategory(curDesc), description: curDesc,
+        });
+      }
+      curDesc = null; curAmt = null;
+    };
+
+    const skipPatterns = ['transaction statement','date & time','transaction details','upi transaction id',
+      'paid by icici','paid by hdfc','paid by sbi','paid by axis','paid by kotak','paid by yes',
+      'paid to icici','paid to hdfc','paid to sbi','paid to axis','paid to kotak',
+      'sent','received','statement period','google pay','transaction note'];
+
+    for (const line of allLines) {
+      const lower = line.toLowerCase();
+      if (skipPatterns.some(p => lower.includes(p))) continue;
+
+      // Date line
+      const dateMatch = line.match(dateRe);
+      if (dateMatch) {
+        flush();
+        const [, day, mon, year] = dateMatch;
+        const d = new Date(parseInt(year), MONTHS[mon.toLowerCase()], parseInt(day));
+        curDate = d.toISOString().split('T')[0];
+        const amtM = line.match(amountRe);
+        if (amtM) curAmt = parseFloat(amtM[1].replace(/,/g, ''));
+        continue;
+      }
+
+      // "Paid to X" = expense
+      const paidTo = line.match(/^Paid to (.+)/i);
+      if (paidTo) {
+        curDesc = paidTo[1].replace(/\.$/, '').trim();
+        curType = 'expense';
+        const amtM = line.match(amountRe);
+        if (amtM) curAmt = parseFloat(amtM[1].replace(/,/g, ''));
+        continue;
+      }
+
+      // "Received from X" = income
+      const recFrom = line.match(/^Received from (.+)/i);
+      if (recFrom) {
+        curDesc = recFrom[1].replace(/\.$/, '').trim();
+        curType = 'income';
+        const amtM = line.match(amountRe);
+        if (amtM) curAmt = parseFloat(amtM[1].replace(/,/g, ''));
+        continue;
+      }
+
+      // Standalone amount line e.g. "₹428" or "₹5,000"
+      const amtOnly = line.match(/^₹\s*([\d,]+(?:\.\d{1,2})?)$/);
+      if (amtOnly && !curAmt) { curAmt = parseFloat(amtOnly[1].replace(/,/g, '')); continue; }
+    }
+    flush();
+
+    const filtered = valid.filter(t => {
+      const d = t.description.toLowerCase();
+      return !d.includes('failed') && !d.includes('pending') && !d.includes('reversed');
+    });
+
+    if (filtered.length === 0) {
+      showImportError('No transactions found. Make sure this is a Google Pay PDF statement.');
+      return;
+    }
+    renderPreview(filtered, errors);
+  } catch (err) {
+    showImportError('Could not parse PDF: ' + err.message);
+  }
 }
 
 // ── Detect GPay CSV format ────────────────────────────────────────────────────

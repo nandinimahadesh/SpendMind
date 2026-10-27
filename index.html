@@ -355,8 +355,8 @@
       </div>
 
       <p class="modal-hint">
-        Upload a <strong>.xlsx</strong> or <strong>.csv</strong> file.<br/>
-        Supports SpendMind template &amp; <strong>GPay / UPI statements</strong> auto-detected.
+        Upload a <strong>.xlsx</strong>, <strong>.csv</strong> or <strong>.pdf</strong> file.<br/>
+        Supports SpendMind template, GPay CSV &amp; <strong>GPay PDF statement</strong> auto-detected.
       </p>
 
       <button class="btn-template" id="download-template">⬇ Download Template</button>
@@ -364,7 +364,7 @@
       <div class="drop-zone" id="drop-zone">
         <div class="drop-zone-icon">📂</div>
         <p class="drop-zone-text">Drag &amp; drop your file here<br/><span>or click to browse</span></p>
-        <input type="file" id="file-input" accept=".xlsx,.xls,.csv" hidden />
+        <input type="file" id="file-input" accept=".xlsx,.xls,.csv,.pdf" hidden />
       </div>
 
       <div class="import-preview" id="import-preview" style="display:none">
@@ -411,6 +411,8 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+  <script>if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';</script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
